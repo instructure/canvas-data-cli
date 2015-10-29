@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+var cli = require('../').cli
+var argv = cli.cli.parse(process.argv.slice(2))
+cli.run(argv)
