@@ -34,6 +34,7 @@ class Sync {
           return {dump, index}
         })
         dumps[0].latestDump = true
+        var latestDump = dumps[0].dump
         var newestSequence = dumps[0].dump.sequence
         async.reduce(dumps, {partialTables: {}, groups: {}, artifactCount: 0}, this.processDump.bind(this), (err, results) => {
           if (err) return cb(err)
@@ -42,11 +43,20 @@ class Sync {
           async.eachLimit(toDownload, CONCURRENCY_LIMIT, this.downloadArtifactGroup.bind(this), (err) => {
             if (err) return cb(err)
             state.sequence = newestSequence
-            this.logger.info(`finished, saving out state, newest sequence: ${newestSequence}`)
-            this.stateStore.save(state, cb)
+            this.downloadSchema(latestDump, (err) => {
+              if (err) return cb(err)
+              this.logger.info(`finished, saving out state, newest sequence: ${newestSequence}`)
+              this.stateStore.save(state, cb)
+            })
           })
         })
       })
+    })
+  }
+  downloadSchema(dump, cb) {
+    this.api.getSchemaVersion(dump.schemaVersion, (err, schema) => {
+      if (err) return cb(err)
+      fs.writeFile(path.join(this.saveLocation, 'schema.json'), JSON.stringify(schema, 0, 2), cb)
     })
   }
   processDump(collector, dumpInfo, cb) {
