@@ -1,6 +1,6 @@
 {
   "name": "canvas-data-cli",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
@@ -13,6 +13,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/instructure/canvas-data-cli.git"
+  },
+  "engines" : {
+    "node" : ">=0.12.0"
   },
   "author": "",
   "license": "MIT",
