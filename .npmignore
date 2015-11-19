@@ -1,2 +1,6 @@
+.git
 src/
 node_modules/
+config.js
+downloads/
+state.json
