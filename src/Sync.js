@@ -104,6 +104,7 @@ class Sync {
           var r = request({method: 'GET', url: downloadLink.url})
           var fileName = path.join(this.saveLocation, artifact.tableName, `${artifact.sequence}_${downloadLink.filename}`)
           var newFile = fs.createWriteStream(fileName)
+          r.pipe(newFile)
 
           r.on('error', cb)
           newFile.on('error', cb)
