@@ -135,7 +135,7 @@ class Sync {
       collector.push(...dumps)
       if (dumps.length < DEFAULT_LIMIT) return cb(null, collector)
       var newestSeq = dumps[0].sequence
-      this.getLatestDumps(newSequence, collector, cb)
+      this.getLatestDumps(newestSeq, collector, cb)
     })
   }
 }
