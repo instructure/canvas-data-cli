@@ -16,8 +16,16 @@ class FileDownloader {
   _downloadRetry(downloadLink, artifact, dest, attempt, cb) {
     if (attempt > MAX_ATTEMPTS) return cb(new Error(`max number of retries reached for ${fileUrl}, aborting`))
     this.logger.debug(`downlading ${downloadLink.filename} for artifact ${artifact.tableName} from dump ${artifact.sequence}, attempt ${attempt}`)
-    pump(request({method: 'GET', url: downloadLink.url}), fs.createWriteStream(dest), (err) => {
-      if (err) {
+    var r = request({method: 'GET', url: downloadLink.url})
+    var badStatusCode = false
+    r.on('response', (resp) => {
+      if (resp.statusCode !== 200) {
+        this.logger.debug(`got non 200 status code (actual ${resp.statusCode}) from ${downloadLink.url}`)
+        badStatusCode = true
+      }
+    })
+    pump(r, fs.createWriteStream(dest), (err) => {
+      if (err || badStatusCode) {
         this.logger.debug(`failed attempt ${attempt} for ${downloadLink.filename}, err: ${err}`)
         return setTimeout(() => this._downloadRetry(downloadLink, artifact, dest, attempt + 1, cb), backoff[attempt])
       }

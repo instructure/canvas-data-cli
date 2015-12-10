@@ -1,7 +1,8 @@
 
 var sampleConfig = `
 module.exports = {
-  saveLocation: './canvasDataFiles',
+  saveLocation: './dataFiles',
+  unpackLocation: './unpackedFiles', // if not defined, defaults to 'unpackedFiles'
   stateFile: './state.json',
   apiUrl: 'https://api.inshosteddata.com/api',
   key: process.env.CD_API_KEY, // don't hardcode creds, keep them in environment variables ideally!

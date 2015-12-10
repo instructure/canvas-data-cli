@@ -4,6 +4,7 @@ var yargs = require('yargs')
 var logger = require('./logger')
 var Sync = require('./Sync')
 var Config = require('./ConfigTask')
+var Unpack = require('./Unpack')
 
 var cli = yargs
   .usage('npm <command>')
@@ -24,6 +25,22 @@ var cli = yargs
     .help('help')
   })
   .command('sampleConfig', 'display a sample config file')
+  .command('unpack', 'decompress and merge files into a single file', (yargs) => {
+    yargs.option('config', {
+      alias: 'c',
+      demand: true,
+      describe: 'the configuration file to use',
+      type: 'string'
+    })
+    .option('filter', {
+      alias: 'f',
+      describe: 'list of tables to unpack, ex: -f user_dim account_dim',
+      demand: true,
+      array: true,
+      type: 'string'
+    })
+    .help('help')
+  })
   .help('help')
   .alias('v', 'version')
   .version(() => require('../package').version)
@@ -31,7 +48,8 @@ var cli = yargs
 
 var runnerMap = {
   sync: {requireConfig: true, class: Sync},
-  sampleConfig: {class: Config}
+  sampleConfig: {class: Config},
+  unpack: {requireConfig: true, class: Unpack}
 }
 module.exports = {
   cli: cli,
