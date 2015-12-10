@@ -12,7 +12,7 @@ class Api {
   }
   buildUrl(route, query) {
     var urlInfo = url.parse(this.apiUrl)
-    urlInfo.pathname = path.join(urlInfo.pathname, route)
+    urlInfo.pathname = path.posix.join(urlInfo.pathname, route)
     urlInfo.query = query
     return url.format(urlInfo)
   }

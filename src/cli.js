@@ -70,6 +70,7 @@ module.exports = {
       if (err) {
         logger.error('an error occured')
         logger.error(err)
+        if (err.stack) logger.error(err.stack)
         process.exit(1)
       }
       logger.info(`${command} command completed successfully`)

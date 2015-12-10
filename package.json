@@ -1,6 +1,6 @@
 {
   "name": "canvas-data-cli",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
