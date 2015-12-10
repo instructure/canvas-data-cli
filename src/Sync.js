@@ -2,10 +2,10 @@ var path = require('path')
 var fs = require('fs')
 var Api = require('./Api')
 var StateStore = require('./StateStore')
+var FileDownloader = require('./FileDownloader')
 var async = require('async')
 var rimraf = require('rimraf')
 var mkdirp = require('mkdirp')
-var request = require('request')
 var _ = require('lodash')
 const DEFAULT_LIMIT = 50
 const CONCURRENCY_LIMIT = 5
@@ -15,6 +15,7 @@ class Sync {
     this.logger = logger
     this.stateStore = new StateStore(config)
     this.api = new Api(config)
+    this.fileDownloader = new FileDownloader(logger)
     this.saveLocation = path.resolve(process.cwd(), config.saveLocation)
   }
   run(cb) {
@@ -98,20 +99,8 @@ class Sync {
 
         this.logger.info(`artifact ${artifact.tableName} from dump ${artifact.sequence} has ${artifact.artifact.files.length} to download`)
         async.eachLimit(artifact.artifact.files, CONCURRENCY_LIMIT, (downloadLink, cb) => {
-
-          this.logger.debug(`downlading ${downloadLink.filename} for artifact ${artifact.tableName} from dump ${artifact.sequence}`)
-
-          var r = request({method: 'GET', url: downloadLink.url})
           var fileName = path.join(this.saveLocation, artifact.tableName, `${artifact.sequence}_${downloadLink.filename}`)
-          var newFile = fs.createWriteStream(fileName)
-          r.pipe(newFile)
-
-          r.on('error', cb)
-          newFile.on('error', cb)
-          r.on('end', () => {
-            this.logger.debug(`finished downlading ${downloadLink.filename} for artifact ${artifact.tableName} from dump ${artifact.sequence}`)
-            cb()
-          })
+          this.fileDownloader.downloadToFile(downloadLink, artifact, fileName, cb)
         }, (err) => {
           if (err) return cb(err)
           this.logger.info(`artifact ${artifact.tableName} from dump ${artifact.sequence} finished`)

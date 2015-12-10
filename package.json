@@ -1,6 +1,6 @@
 {
   "name": "canvas-data-cli",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
@@ -14,8 +14,8 @@
     "type": "git",
     "url": "git+https://github.com/instructure/canvas-data-cli.git"
   },
-  "engines" : {
-    "node" : ">=0.12.0"
+  "engines": {
+    "node": ">=0.12.0"
   },
   "author": "",
   "license": "MIT",
@@ -27,6 +27,7 @@
     "async": "^1.5.0",
     "lodash": "^3.10.1",
     "mkdirp": "^0.5.1",
+    "pump": "^1.0.1",
     "request": "^2.65.0",
     "rimraf": "^2.4.3",
     "yargs": "^3.29.0"

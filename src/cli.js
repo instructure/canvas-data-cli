@@ -3,7 +3,7 @@ var fs = require('fs')
 var yargs = require('yargs')
 var logger = require('./logger')
 var Sync = require('./Sync')
-var Config = require('./Config')
+var Config = require('./ConfigTask')
 
 var cli = yargs
   .usage('npm <command>')
@@ -25,6 +25,9 @@ var cli = yargs
   })
   .command('sampleConfig', 'display a sample config file')
   .help('help')
+  .alias('v', 'version')
+  .version(() => require('../package').version)
+  .describe('v', 'show version information')
 
 var runnerMap = {
   sync: {requireConfig: true, class: Sync},
