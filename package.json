@@ -1,6 +1,6 @@
 {
   "name": "canvas-data-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
@@ -28,6 +28,7 @@
     "lodash": "^3.10.1",
     "mkdirp": "^0.5.1",
     "pump": "^1.0.1",
+    "re": "^0.1.4",
     "request": "^2.65.0",
     "rimraf": "^2.4.3",
     "stream-stream": "^1.2.6",

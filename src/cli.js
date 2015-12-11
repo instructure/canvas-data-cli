@@ -5,6 +5,7 @@ var logger = require('./logger')
 var Sync = require('./Sync')
 var Config = require('./ConfigTask')
 var Unpack = require('./Unpack')
+var Fetch = require('./Fetch')
 
 var cli = yargs
   .usage('npm <command>')
@@ -41,6 +42,20 @@ var cli = yargs
     })
     .help('help')
   })
+  .command('fetch', 'fetch a single table', (yargs) => {
+    yargs.options('config', {
+      alias: 'c',
+      demand: true,
+      describe: 'the configuration file to use',
+      type: 'string'
+    })
+    .option('table', {
+      alias: 't',
+      describe: 'the table to fetch',
+      demand: true,
+      type: 'string'
+    })
+  })
   .help('help')
   .alias('v', 'version')
   .version(() => require('../package').version)
@@ -49,7 +64,8 @@ var cli = yargs
 var runnerMap = {
   sync: {requireConfig: true, class: Sync},
   sampleConfig: {class: Config},
-  unpack: {requireConfig: true, class: Unpack}
+  unpack: {requireConfig: true, class: Unpack},
+  fetch: {requireConfig: true, class: Fetch}
 }
 module.exports = {
   cli: cli,
