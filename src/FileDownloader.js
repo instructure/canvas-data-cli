@@ -27,10 +27,9 @@ class FileDownloader {
           badStatusCode = true
         }
       })
-      r.pipe(fs.createWriteStream(dest))
-      r.on('end', () => {
-        if(badStatusCode) {
-          this.logger.debug(`failed attempt ${retryCount + 1} for ${downloadLink.filename}, err: ${badStatusCode}`)
+      pump(r, fs.createWriteStream(dest), (err) => {
+        if (err || badStatusCode) {
+          this.logger.debug(`failed attempt ${retryCount + 1} for ${downloadLink.filename}, err: ${err || badStatusCode}`)
           return done(new Error("Failed Attempt."), retryCount)
         }
         this.logger.debug(`finished downlading ${downloadLink.filename} for artifact ${artifact.tableName} from dump ${artifact.sequence}`)

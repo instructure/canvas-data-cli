@@ -18,44 +18,54 @@ class Sync {
     this.fileDownloader = new FileDownloader(logger)
     this.saveLocation = path.resolve(process.cwd(), config.saveLocation)
   }
+  getNewCollector() {
+    return {partialTables: {}, groups: {}, artifactCount: 0}
+  }
   run(cb) {
     this.stateStore.load((err, state) => {
       if (err) return cb(err)
       state = state || {}
       var lastSequence = state.sequence || 0
       this.logger.info(`starting from sequence ${lastSequence}`)
-      this.getLatestDumps(lastSequence, (err, dumps) => {
+      this.getToDownload(lastSequence, (err, {toDownload, artifactCount, schemaVersion, newestSequence}) => {
         if (err) return cb(err)
-        if (!dumps.length) {
+        if (toDownload.length === 0) {
           this.logger.info('no new dumps to process')
           return cb()
         }
-        this.logger.info(`will process ${dumps.length} dumps`)
-        dumps = dumps.map((dump, index) => {
-          return {dump, index}
-        })
-        dumps[0].latestDump = true
-        var latestDump = dumps[0].dump
-        var newestSequence = dumps[0].dump.sequence
-        async.reduce(dumps, {partialTables: {}, groups: {}, artifactCount: 0}, this.processDump.bind(this), (err, results) => {
+        this.logger.info(`downloading ${artifactCount} artifacts`)
+        async.eachLimit(toDownload, CONCURRENCY_LIMIT, this.downloadArtifactGroup.bind(this), (err) => {
           if (err) return cb(err)
-          var toDownload = _.values(results.groups)
-          this.logger.info(`downloading ${results.artifactCount} artifacts`)
-          async.eachLimit(toDownload, CONCURRENCY_LIMIT, this.downloadArtifactGroup.bind(this), (err) => {
+          state.sequence = newestSequence
+          this.downloadSchema(schemaVersion, (err) => {
             if (err) return cb(err)
-            state.sequence = newestSequence
-            this.downloadSchema(latestDump, (err) => {
-              if (err) return cb(err)
-              this.logger.info(`finished, saving out state, newest sequence: ${newestSequence}`)
-              this.stateStore.save(state, cb)
-            })
+            this.logger.info(`finished, saving out state, newest sequence: ${newestSequence}`)
+            this.stateStore.save(state, cb)
           })
         })
       })
     })
   }
-  downloadSchema(dump, cb) {
-    this.api.getSchemaVersion(dump.schemaVersion, (err, schema) => {
+  getToDownload(lastSequence, cb) {
+    this.getLatestDumps(lastSequence, (err, dumps) => {
+      if (err) return cb(err)
+      if (dumps.length === 0) return cb()
+      this.logger.info(`will process ${dumps.length} dumps`)
+      dumps = dumps.map((dump, index) => {
+        return {dump, index}
+      })
+      dumps[0].latestDump = true
+      var latestDump = dumps[0].dump
+      var newestSequence = dumps[0].dump.sequence
+      async.reduce(dumps, this.getNewCollector(), this.processDump.bind(this), (err, results) => {
+        if (err) return cb(err)
+        var toDownload = _.values(results.groups)
+        cb(null, {toDownload, newestSequence, artifactCount: results.artifactCount, schemaVersion: latestDump.schemaVersion})
+      })
+    })
+  }
+  downloadSchema(schemaVersion, cb) {
+    this.api.getSchemaVersion(schemaVersion, (err, schema) => {
       if (err) return cb(err)
       fs.writeFile(path.join(this.saveLocation, 'schema.json'), JSON.stringify(schema, 0, 2), cb)
     })
@@ -63,10 +73,12 @@ class Sync {
   processDump(collector, dumpInfo, cb) {
     this.api.getFilesForDump(dumpInfo.dump.dumpId, (err, dumpFiles) => {
       if (err) return cb(err)
+
       for (var tableName in dumpFiles.artifactsByTable) {
-        var artifact = dumpFiles.artifactsByTable[tableName]
-        var artifactInfo = {sequence: dumpInfo.dump.sequence, tableName, artifact}
-        var willDownload = false
+        const artifact = dumpFiles.artifactsByTable[tableName]
+        const artifactInfo = {sequence: dumpInfo.dump.sequence, tableName, artifact}
+        let willDownload = false
+
         if (dumpInfo.latestDump) {
           this.logger.debug(`will download artifact ${tableName} from dump ${artifactInfo.sequence} as latestDump`)
           willDownload = true
@@ -74,17 +86,21 @@ class Sync {
           this.logger.debug(`will download artifact ${tableName} from dump ${artifactInfo.sequence} as partial`)
           willDownload = true
           collector.partialTables[tableName] = 'partial'
-        } else if (collector.partialTables[tableName] === 'partial' && artifact.partial === false) {
+        } else if (collector.partialTables[tableName] === 'partial' &&
+                   artifact.partial === false) {
           this.logger.debug(`will download artifact ${tableName} from dump ${artifactInfo.sequence} as first in partial`)
           willDownload = true
           collector.partialTables[tableName] = 'foundFull'
         }
+
         if (willDownload) {
           collector.artifactCount++
           collector.groups[tableName] = collector.groups[tableName] || []
           collector.groups[tableName].unshift(artifactInfo)
         }
+
       }
+
       cb(null, collector)
     })
   }
@@ -121,7 +137,7 @@ class Sync {
     }
     this.api.getDumps({after: lastSequence, limit: DEFAULT_LIMIT}, (err, dumps) => {
       if (err) return cb(err)
-      collector.push(...dumps)
+      collector.unshift(...dumps)
       if (dumps.length < DEFAULT_LIMIT) return cb(null, collector)
       var newestSeq = dumps[0].sequence
       this.getLatestDumps(newestSeq, collector, cb)

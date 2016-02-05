@@ -4,7 +4,7 @@
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test/*Test.js",
+    "test": "mocha --compilers js:babel/register test/*Test.js",
     "prepublish": "babel src --out-dir lib/"
   },
   "bin": {
@@ -36,6 +36,9 @@
   },
   "devDependencies": {
     "babel": "^5.8.29",
-    "mocha": "^2.3.3"
+    "chai": "^3.5.0",
+    "mocha": "^2.3.3",
+    "mocha-sinon": "^1.1.5",
+    "sinon": "^1.17.3"
   }
 }
