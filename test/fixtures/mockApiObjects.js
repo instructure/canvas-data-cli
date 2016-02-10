@@ -41,5 +41,38 @@ var mockApiObjects = module.exports = {
         {url: 'http://url_to_download/file1.tar.gz', filename: 'file1.tar.gz'}
       ]
     })
+  },
+  buildDumpHistory(opts) {
+    opts = opts || {}
+    opts.entryOpts = opts.entryOpts || []
+    var numEntries = opts.numEntries || 2
+    var entries = _.fill(Array(numEntries), 0).map((v, index) => {
+      var entryOpts = _.defaults(opts.entryOpts[index], {
+        sequence: index,
+        dumpId: '1234' + index
+      })
+      return mockApiObjects.buildDumpHistoryEntry(entryOpts)
+    })
+    return _.defaults(opts, {
+      table: 'account_dim',
+      history: entries
+    })
+  },
+  buildDumpHistoryEntry(opts) {
+    opts = opts || {}
+    var numFiles = opts.numFiles || 2
+    var files = _.fill(Array(numFiles), 0).map((v, index) => mockApiObjects.buildDumpHistoryFile({filename: `filename-${index}.tar.gz`}))
+    return _.defaults(opts, {
+      dumpId: '1234',
+      sequence: 0,
+      files: files,
+      partial: false
+    })
+  },
+  buildDumpHistoryFile(opts) {
+    return _.defaults(opts, {
+      url: 'http://myapi.com/table/filename-1.tar.gz', filename: 'filename-1.tar.gz'
+    })
   }
+
 }
