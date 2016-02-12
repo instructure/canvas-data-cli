@@ -27,8 +27,9 @@ class Sync {
       state = state || {}
       var lastSequence = state.sequence || 0
       this.logger.info(`starting from sequence ${lastSequence}`)
-      this.getToDownload(lastSequence, (err, {toDownload, artifactCount, schemaVersion, newestSequence}) => {
+      this.getToDownload(lastSequence, (err, res) => {
         if (err) return cb(err)
+        var {toDownload, artifactCount, schemaVersion, newestSequence} = res
         if (toDownload.length === 0) {
           this.logger.info('no new dumps to process')
           return cb()
