@@ -10,7 +10,7 @@ var Grab = require('./Grab')
 var List = require('./List')
 
 var cli = yargs
-  .usage('npm <command>')
+  .usage('canvasDataCli <command>')
   .demand(1, 'must provide a valid command')
   .option('level', {
     alias: 'l',
