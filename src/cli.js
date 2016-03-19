@@ -8,7 +8,7 @@ var Unpack = require('./Unpack')
 var Fetch = require('./Fetch')
 
 var cli = yargs
-  .usage('npm <command>')
+  .usage('canvasDataCli <command>')
   .demand(1, 'must provide a valid command')
   .option('level', {
     alias: 'l',
