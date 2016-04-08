@@ -1,11 +1,11 @@
 {
   "name": "canvas-data-cli",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
     "test": "mocha --compilers js:babel/register test/*Test.js",
-    "prepublish": "babel src --out-dir lib/"
+    "prepublishOnly": "babel src --out-dir lib/"
   },
   "bin": {
     "canvasDataCli": "./bin/canvasDataCli"
