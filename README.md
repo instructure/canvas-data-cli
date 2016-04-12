@@ -9,11 +9,11 @@ This tool should work on Linux, OSX, and Windows. The tool uses node.js runtime,
 1. Install Node.js - Any version newer than 0.12.0 should work, best bet is to follow the instructions [here](https://nodejs.org/en/download/package-manager/)
 ### Install via npm
 `npm install -g canvas-data-cli`
-### Install from github
-`git clone https://github.com/instructure/canvas-data-cli.git && cd canvas-data-cli && npm install -g .`
+### OR Install from github
+`git clone https://github.com/instructure/canvas-data-cli.git && cd canvas-data-cli && make localInstall`
 ### Configuring
 The Canvas Data CLI requires a configuration file with a fields set. Canvas Data CLI uses a small javascript file as configuration file.
-To generate a stub of this configuration run `canvasDataCli sampleConfig` which will print out the sample configuration. Safe this to a file, like `config.js`.
+To generate a stub of this configuration run `canvasDataCli sampleConfig` which will create a `config.js.sample` file. Rename this to a file, like `config.js`.
 
 Edit the file to point to where you want to save the files as well as the file used to track the state of which data exports you have already downloaded. By default the sample config file
 tries to pull your API key and secret from environment variables, `CD_API_KEY` and `CD_API_SECRET`, which is more secure, however, you can also hard code the credentials in the config file.
@@ -28,11 +28,21 @@ If you want to simply download all the data from Canva Data, the `sync` command 
 canvasDataCli sync -c path/to/config.js
 ```
 
-This will start the sync process. On the first sync, it will look through all the data exports and download only the latest version of any tables that are not
+This will start the sync process. The sync process uses the `sync` api endpoint to get a list of all the files. If the file does
 
-marked as `partial` and will download any files from older exports to complete a partial table.
+not exist, it will download it. Otherwise, it will skip the file. After downloading all files, it will delete any unexpected files
 
-On subsequent executions, it will check for newest data exports after the last recorded export, delete any old tables if the table is NOT a `partial` table and will append new files for partial tables.
+in the directory to remove old data.
+
+On subsequent executions, it will only download the files it doesn't have.
+
+This process is also resumeable, if for whatever reason you have issues, it should restart and download only the files
+
+that previously failed. One of the ways to make this more safe is that it downloads the file to a temporary name and
+
+renames it once the process is finished. This may leave around `gz.tmp` files, but they should get deleted automatically once
+
+you have a successful run.
 
 If you run this daily, you should keep all of your data from Canvas Data up to date.
 

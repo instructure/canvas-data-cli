@@ -3,12 +3,15 @@ require('mocha-sinon')
 const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
+const fs = require('fs')
 
 const assert = require('chai').assert
-const _ = require('lodash')
 const rimraf = require('rimraf')
 const logger = require('./fixtures/mockLogger')
 const mockApi = require('./fixtures/mockApiObjects')
+const async = require('async')
+const mkdirp = require('mkdirp')
+
 
 const Sync = require('../src/Sync')
 function buildTestSync() {
@@ -17,199 +20,220 @@ function buildTestSync() {
     tmpDir: tmpDir,
     saveLocation: path.join(tmpDir, 'dataFiles'),
     unpackLocation: path.join(tmpDir, 'unpackedFiles'),
-    stateFile: path.join(tmpDir, '/state.json'),
     apiUrl: 'https://mockApi/api',
     key: 'fakeKey',
     secret: 'fakeSecret'
   }
-  return {sync: new Sync({}, config, logger), config}
+  var sync = new Sync({}, config, logger)
+  sync.testConfig = config
+  return {sync: sync}
 }
 
-function cleanupSync(sync, config, cb) {
-  rimraf(config.tmpDir, cb)
+function cleanupSync(sync, cb) {
+  rimraf(sync.testConfig.tmpDir, cb)
+}
+
+function touchFile(filename, cb) {
+  if (typeof filename === 'object') {
+    filename = filename.savedTo
+  }
+  mkdirp(path.dirname(filename), (err) => {
+    if (err) return cb(err)
+    fs.open(filename, 'w', (err, fd) => {
+      if (err) return cb(err)
+      fs.close(fd, cb)
+    })
+  })
+}
+function fileExists(filename, cb) {
+  if (typeof filename === 'object') {
+    filename = filename.savedTo
+  }
+  fs.stat(filename, (err, fileStat) => {
+    if (err && err.code !== 'ENOENT') return cb(err)
+    if (err && err.code === 'ENOENT') return cb(null, false)
+    cb(null, true)
+  })
 }
 
 describe('SyncTest', function() {
-  describe('getLatestDumps', () => {
-    it('should work with API if no paging', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getDumps', (opts, cb) => {
-        cb(null, _.fill(Array(40), 0).map((k, i) => mockApi.buildDump({sequence: 40 - i})))
-      })
-      sync.getLatestDumps(0, (err, dumps) => {
+  describe('dirHandling', () => {
+    var {sync} = buildTestSync()
+    after((done) => cleanupSync(sync, done))
+    it('should build dirs properly', () => {
+      assert.include(sync.buildDir({table: 'foobar'}), '/foobar', 'properly joins from a file object to get a directory')
+      assert.include(sync.buildRealPath({table: 'foobar', filename: 'foobar-1234'}), '/foobar/foobar-1234', 'properly joins from a file object to get a full path')
+      assert.notEqual(sync.buildRealPath({table: 'foobar', filename: 'foobar-1234'}), '/foobar/foobar-1234', 'properly joins from a file object to get a full path')
+    })
+  })
+  describe('fileExists', () => {
+    var {sync} = buildTestSync()
+    after((done) => cleanupSync(sync, done))
+    it('should return true when a file does exist', (done) => {
+      var file = path.join(sync.saveLocation, 'shouldExist')
+      touchFile(file, (err) => {
         assert.ifError(err)
-        assert.equal(dumps.length, 40)
-        assert.equal(dumps[0].sequence, 40)
-        assert.equal(dumps[39].sequence, 1)
-        assert(apiStub.calledOnce)
-        cleanupSync(sync, config, done)
+        sync.fileExists(file, (err, exists) => {
+          assert.ifError(err)
+          assert(exists)
+          done()
+        })
       })
     })
-    it('should work with paged responsed', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getDumps')
-      apiStub.onFirstCall().callsArgWith(1, null, _.fill(Array(60), 0).map((k, i) => mockApi.buildDump({sequence: 60 - i})))
-      apiStub.onSecondCall().callsArgWith(1, null, _.fill(Array(40), 0).map((k, i) => mockApi.buildDump({sequence: 100 - i})))
-      sync.getLatestDumps(0, (err, dumps) => {
+    it('should return false when a file does not exist', (done) => {
+      sync.fileExists(path.join(sync.saveLocation, 'fakeFile'), (err, exists) => {
         assert.ifError(err)
-        assert.equal(dumps.length, 100)
-        assert.equal(dumps[0].sequence, 100)
-        assert.equal(dumps[99].sequence, 1)
-        assert(apiStub.calledTwice)
-        cleanupSync(sync, config, done)
-      })
-    })
-    it('should pass errors back', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getDumps')
-      apiStub.onFirstCall().callsArgWith(1, new Error('something wrong'))
-      sync.getLatestDumps(0, (err, dumps) => {
-        assert.isNotNull(err)
-        assert(err instanceof Error)
-        cleanupSync(sync, config, done)
+        assert(!exists)
+        done()
       })
     })
   })
-  describe('processDump', () => {
-    it('should mark to download an artifact if latest', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getFilesForDump')
-      const mockOpts = {
-        tables: ['account_dim', 'requests'],
-        tableOpts: {
-          requests: {
-            tableName: 'requests',
-            partial: true
-          }
-        }
-      }
-
-      const mockDumpFile = mockApi.buildDumpFile(mockOpts)
-      apiStub.onFirstCall().callsArgWith(1, null, mockDumpFile)
-      sync.processDump(sync.getNewCollector(), {dump: mockDumpFile, latestDump: true}, (err, res) => {
+  describe('downloadSchema', () => {
+    var {sync} = buildTestSync()
+    after((done) => cleanupSync(sync, done))
+    it('should ensure the save location exists', function(done) {
+      var schemaStub = this.sinon.stub(sync.api, 'getSchemaVersion')
+      schemaStub.onFirstCall().callsArgWith(1, null, {schemaVersion: '1.0.0'})
+      fs.stat(sync.saveLocation, (err) => {
+        assert.equal(err.code, 'ENOENT')
+        sync.downloadSchema('1.0.0', (err) => {
+          assert.ifError(err)
+          fs.stat(path.join(sync.saveLocation, 'schema.json'), (err, schema) => {
+            assert.ifError(err)
+            assert(schema.isFile())
+            done()
+          })
+        })
+      })
+    })
+  })
+  describe('processFile', () => {
+    var {sync} = buildTestSync()
+    after((done) => cleanupSync(sync, done))
+    it('does not download the file if it exists', function(done) {
+      var existsStub = this.sinon.stub(sync, 'fileExists')
+      existsStub.onFirstCall().callsArgWith(1, null, true)
+      var downloadSpy = this.sinon.spy(sync, 'downloadFile')
+      sync.processFile({filename: 'existsFile.gz', table: 'exists'}, (err, res) => {
         assert.ifError(err)
-        assert.equal(res.groups.account_dim.length, 1)
-        assert.equal(res.groups.requests.length, 1)
-        cleanupSync(sync, config, done)
+        assert(!res.didDownload)
+        assert(res.filename, 'existsFile.gz')
+        assert(res.table, 'exists')
+        assert(res.savedTo, path.join(sync.saveLocation, 'exists', 'existsFile.gz'))
+        assert(!downloadSpy.called)
+        done()
       })
-
     })
-    it('should not download a full table if not latest', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getFilesForDump')
-      const mockOpts = {
-        tables: ['account_dim', 'requests'],
-        tableOpts: {
-          requests: {
-            tableName: 'requests',
-            partial: true
-          }
-        }
-      }
+    it('does call to download if the file does not exist', function(done) {
+      var existsStub = this.sinon.stub(sync, 'fileExists')
+      existsStub.onFirstCall().callsArgWith(1, null, false)
+      var downloadStub = this.sinon.stub(sync, 'downloadFile')
+      downloadStub.onFirstCall().callsArgWith(1, null, {didDownload: true})
 
-      const mockDumpFile = mockApi.buildDumpFile(mockOpts)
-      apiStub.onFirstCall().callsArgWith(1, null, mockDumpFile)
-      sync.processDump(sync.getNewCollector(), {dump: mockDumpFile, latestDump: false}, (err, res) => {
+      sync.processFile({filename: 'notExistsFile.gz', table: 'notExists'}, (err, res) => {
         assert.ifError(err)
-        assert.isUndefined(res.groups.account_dim)
-        assert.equal(res.groups.requests.length, 1)
-        assert.equal(res.partialTables.requests, 'partial')
-        cleanupSync(sync, config, done)
+        assert(res.didDownload)
+        assert(downloadStub.called)
+        done()
       })
     })
-    it('should download a full dump if we previously have seen a partial', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getFilesForDump')
-      const mockOpts = {
-        tables: ['account_dim', 'requests'],
-        tableOpts: {
-          requests: {
-            tableName: 'requests',
-            partial: false
-          }
-        }
-      }
+    it('handles if fileExists throws some other error', function(done) {
+      var existsStub = this.sinon.stub(sync, 'fileExists')
+      existsStub.onFirstCall().callsArgWith(1, new Error('unexpected'), false)
 
-      const mockDumpFile = mockApi.buildDumpFile(mockOpts)
-      apiStub.onFirstCall().callsArgWith(1, null, mockDumpFile)
-      var coll = sync.getNewCollector()
-      coll.partialTables.requests = 'partial'
-      coll.groups.requests = []
-      coll.groups.requests.push({artifact: mockApi.buildDumpArtifact({tableName: 'requests', partial: true})})
-      sync.processDump(coll, {dump: mockDumpFile, latestDump: false}, (err, res) => {
+      sync.processFile({filename: 'notExistsFile.gz', table: 'notExists'}, (err, res) => {
+        assert(err)
+        assert.instanceOf(err, Error)
+        done()
+      })
+    })
+  })
+  describe('downloadFile', () => {
+    var {sync} = buildTestSync()
+    after((done) => cleanupSync(sync, done))
+    it('creates the enclosing folder if it does not exist', function(done) {
+      var fileObj = {filename: 'foobar.gz', table: 'bubbles'}
+      var downloaderStub = this.sinon.stub(sync.fileDownloader, 'downloadToFile', (fileInfo, info, dest, cb) => fs.open(dest, 'w', cb))
+      fs.stat(sync.buildDir(fileObj), (err) => {
+        assert.equal(err.code, 'ENOENT')
+        sync.downloadFile(fileObj, (err, res) => {
+          assert.ifError(err)
+          assert(res.didDownload)
+          assert.equal(res.table, fileObj.table)
+          assert.equal(res.filename, fileObj.filename)
+          assert.include(res.savedTo, fileObj.filename)
+          fs.stat(res.savedTo, (err, fileStat) => {
+            assert.ifError(err)
+            assert(fileStat.isFile())
+            fs.stat(sync.buildTempPath(fileObj), (err) => {
+              assert.equal(err.code, 'ENOENT', 'does not leave a straggling temporary file')
+              done()
+            })
+          })
+        })
+      })
+    })
+
+    it('does not return an error if the download fails', function(done) {
+      var fileObj = {filename: 'error.gz', table: 'error'}
+      var downloaderStub = this.sinon.stub(sync.fileDownloader, 'downloadToFile')
+      downloaderStub.onFirstCall().callsArgWith(3, new Error('unexpected'))
+      sync.downloadFile(fileObj, (err, res) => {
         assert.ifError(err)
-        assert.isUndefined(res.groups.account_dim)
-        assert.equal(res.groups.requests.length, 2)
-        assert.equal(res.partialTables.requests, 'foundFull')
-        cleanupSync(sync, config, done)
+        assert.instanceOf(res.error, Error)
+        fs.stat(sync.buildRealPath(fileObj), (err) => {
+          assert.equal(err.code, 'ENOENT', 'does not leave a real file which would break future syncs')
+          done()
+        })
       })
     })
-    it('should not download a partial if we previously have seen a full dump', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getFilesForDump')
-      const mockOpts = {
-        tables: ['account_dim', 'requests'],
-        tableOpts: {
-          requests: {
-            tableName: 'requests',
-            partial: true
-          }
-        }
-      }
-
-      const mockDumpFile = mockApi.buildDumpFile(mockOpts)
-      apiStub.onFirstCall().callsArgWith(1, null, mockDumpFile)
-      var coll = sync.getNewCollector()
-      coll.partialTables.requests = 'foundFull'
-      coll.groups.requests = []
-      coll.groups.requests.push({artifact: mockApi.buildDumpArtifact({tableName: 'requests', partial: false})})
-      sync.processDump(coll, {dump: mockDumpFile, latestDump: false}, (err, res) => {
+  })
+  describe('cleanupFiles', () => {
+    var {sync} = buildTestSync()
+    after((done) => cleanupSync(sync, done))
+    function attachSavedTo(obj) {
+      obj.savedTo = sync.buildRealPath(obj)
+      return obj
+    }
+    it('should not delete files that are part of the downloaded set', (done) => {
+      var validFiles = [
+        {table: 'foo', filename: '1.gz',},
+        {table: 'foo', filename: '2.gz'},
+        {table: 'bar', filename: '1.gz'},
+        {table: 'with_', filename: 'hello'},
+      ].map(attachSavedTo)
+      var toDelete = [
+        {table: 'deleteMe', filename: 'asdfasdfsad.gz'},
+        {table: '_reallyDeleteMe', filename: 'boop.gz'},
+        {table: 'silylongnamehopefullythisshouldworkprettymucheverywherebutifnotwewillatleasthaveatestforit', filename: 'file.gz'}
+      ].map(attachSavedTo)
+      var toCreate = validFiles.slice(0)
+      toCreate.push(...toDelete)
+      var schemaPath = path.join(sync.saveLocation, 'schema.json')
+      toCreate.push(schemaPath)
+      async.map(toCreate, touchFile, (err) => {
         assert.ifError(err)
-        assert.isUndefined(res.groups.account_dim)
-        assert.equal(res.groups.requests.length, 1)
-        assert.equal(res.partialTables.requests, 'foundFull')
-        cleanupSync(sync, config, done)
+        sync.cleanupFiles(validFiles, (err) => {
+          assert.ifError(err)
+          // add this back on for the utility function to check for existence
+          validFiles.push(schemaPath)
+          async.map(validFiles, fileExists, (err, res) => {
+            assert.ifError(err)
+            assert.equal(res.length, 5)
+            for (var r of res) {
+              assert(r)
+            }
+            async.map(toDelete, fileExists, (err, res) => {
+              assert.ifError(err)
+              assert.equal(res.length, 3)
+              for (var r of res) {
+                assert(!r)
+              }
+              done()
+            })
+          })
+        })
       })
     })
-    it('should not download a full if we previously have seen a full dump', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getFilesForDump')
-      const mockOpts = {
-        tables: ['account_dim', 'requests'],
-        tableOpts: {
-          requests: {
-            tableName: 'requests',
-            partial: false
-          }
-        }
-      }
-
-      const mockDumpFile = mockApi.buildDumpFile(mockOpts)
-      apiStub.onFirstCall().callsArgWith(1, null, mockDumpFile)
-      var coll = sync.getNewCollector()
-      coll.partialTables.requests = 'foundFull'
-      coll.groups.requests = []
-      coll.groups.requests.push({artifact: mockApi.buildDumpArtifact({tableName: 'requests', partial: false})})
-      sync.processDump(coll, {dump: mockDumpFile, latestDump: false}, (err, res) => {
-        assert.ifError(err)
-        assert.isUndefined(res.groups.account_dim)
-        assert.equal(res.groups.requests.length, 1)
-        assert.equal(res.partialTables.requests, 'foundFull')
-        cleanupSync(sync, config, done)
-      })
-    })
-    it('should properly escape if an error', function(done) {
-      var {sync, config} = buildTestSync()
-      var apiStub = this.sinon.stub(sync.api, 'getFilesForDump')
-      const mockDumpFile = mockApi.buildDumpFile()
-      apiStub.onFirstCall().callsArgWith(1, new Error('something wrong'))
-      var coll = sync.getNewCollector()
-      sync.processDump(coll, {dump: mockDumpFile, lastestDump: false}, (err, res) => {
-        assert.isNotNull(err)
-        assert(err instanceof Error)
-        cleanupSync(sync, config, done)
-      })
-    })
-
   })
 })

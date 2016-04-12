@@ -25,7 +25,7 @@ var cli = yargs
     })
     .help('help')
   })
-  .command('sampleConfig', 'display a sample config file')
+  .command('sampleConfig', 'write a sample config file to config.js.sample')
   .command('unpack', 'decompress and merge files into a single file', (yargs) => {
     yargs.option('config', {
       alias: 'c',

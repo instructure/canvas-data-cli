@@ -1,147 +1,135 @@
 var path = require('path')
 var fs = require('fs')
 var Api = require('./Api')
-var StateStore = require('./StateStore')
 var FileDownloader = require('./FileDownloader')
 var async = require('async')
-var rimraf = require('rimraf')
 var mkdirp = require('mkdirp')
-var _ = require('lodash')
+var glob = require('glob')
 const DEFAULT_LIMIT = 50
 const CONCURRENCY_LIMIT = 5
 class Sync {
   constructor(opts, config, logger) {
     this.opts = opts
     this.logger = logger
-    this.stateStore = new StateStore(config)
     this.api = new Api(config)
     this.fileDownloader = new FileDownloader(logger)
     this.saveLocation = path.resolve(process.cwd(), config.saveLocation)
   }
-  getNewCollector() {
-    return {partialTables: {}, groups: {}, artifactCount: 0}
-  }
   run(cb) {
-    this.stateStore.load((err, state) => {
+    this.getSync((err, toSync) => {
       if (err) return cb(err)
-      state = state || {}
-      var lastSequence = state.sequence || 0
-      this.logger.info(`starting from sequence ${lastSequence}`)
-      this.getToDownload(lastSequence, (err, res) => {
+      this.downloadSchema(toSync.schemaVersion, (err) => {
         if (err) return cb(err)
-        var {toDownload, artifactCount, schemaVersion, newestSequence} = res
-        if (toDownload.length === 0) {
-          this.logger.info('no new dumps to process')
-          return cb()
-        }
-        this.logger.info(`downloading ${artifactCount} artifacts`)
-        async.eachLimit(toDownload, CONCURRENCY_LIMIT, this.downloadArtifactGroup.bind(this), (err) => {
+        async.mapLimit(toSync.files, CONCURRENCY_LIMIT, this.processFile.bind(this), (err, results) => {
           if (err) return cb(err)
-          state.sequence = newestSequence
-          this.downloadSchema(schemaVersion, (err) => {
+
+          var splitResults = this.splitResults(results)
+          this.logResults(splitResults)
+
+          if (splitResults.erroredFiles.length) {
+            this.logger.warn(`${errorFiles.length} files failed to download, please try running the sync again, if this error persists, open a ticket. No files will be cleaned up`)
+            this.logger.warn(errorFiles)
+            return cb(new Error('failed to download some files, try running sync again'))
+          }
+
+          this.cleanupFiles(results, (err) => {
             if (err) return cb(err)
-            this.logger.info(`finished, saving out state, newest sequence: ${newestSequence}`)
-            this.stateStore.save(state, cb)
+            this.logger.info('finished cleanup, done!')
+            cb()
           })
         })
       })
     })
   }
-  getToDownload(lastSequence, cb) {
-    this.getLatestDumps(lastSequence, (err, dumps) => {
+  splitResults(results) {
+    var erroredFiles = results.filter((res) => res.error)
+    var newDownloaded = results.filter((res) => res.didDownload).map((res) => res.filename)
+    var cached = results.filter((res) => !res.error && !res.didDownload).map((res) => res.filename)
+    return {erroredFiles, newDownloaded, cached, results}
+  }
+  logResults(splitResults) {
+    if (splitResults.cached.length === splitResults.results.length) {
+      this.logger.info('no new files were downloaded')
+    } else {
+      this.logger.info(`downloaded ${splitResults.newDownloaded.length} new files out of ${splitResults.results.length} total files`)
+      this.logger.debug('new files downloaded', splitResults.newDownloaded)
+      this.logger.debug('cached files', splitResults.cached)
+    }
+  }
+  getSync(cb) {
+    this.logger.info('fetching current list of files from API...')
+    this.api.getSync((err, toSync) => {
       if (err) return cb(err)
-      if (dumps.length === 0) return cb()
-      this.logger.info(`will process ${dumps.length} dumps`)
-      dumps = dumps.map((dump, index) => {
-        return {dump, index}
-      })
-      dumps[0].latestDump = true
-      var latestDump = dumps[0].dump
-      var newestSequence = dumps[0].dump.sequence
-      async.reduce(dumps, this.getNewCollector(), this.processDump.bind(this), (err, results) => {
-        if (err) return cb(err)
-        var toDownload = _.values(results.groups)
-        cb(null, {toDownload, newestSequence, artifactCount: results.artifactCount, schemaVersion: latestDump.schemaVersion})
-      })
+      this.logger.info(`total number of files: ${toSync.files.length} files`)
+      cb(null, toSync)
     })
   }
   downloadSchema(schemaVersion, cb) {
-    this.api.getSchemaVersion(schemaVersion, (err, schema) => {
+    mkdirp(this.saveLocation, (err) => {
       if (err) return cb(err)
-      fs.writeFile(path.join(this.saveLocation, 'schema.json'), JSON.stringify(schema, 0, 2), cb)
-    })
-  }
-  processDump(collector, dumpInfo, cb) {
-    this.api.getFilesForDump(dumpInfo.dump.dumpId, (err, dumpFiles) => {
-      if (err) return cb(err)
-
-      for (var tableName in dumpFiles.artifactsByTable) {
-        const artifact = dumpFiles.artifactsByTable[tableName]
-        const artifactInfo = {sequence: dumpInfo.dump.sequence, tableName, artifact}
-        let willDownload = false
-
-        if (dumpInfo.latestDump) {
-          this.logger.debug(`will download artifact ${tableName} from dump ${artifactInfo.sequence} as latestDump`)
-          willDownload = true
-        } else if (artifact.partial && collector.partialTables[tableName] !== 'foundFull') {
-          this.logger.debug(`will download artifact ${tableName} from dump ${artifactInfo.sequence} as partial`)
-          willDownload = true
-          collector.partialTables[tableName] = 'partial'
-        } else if (collector.partialTables[tableName] === 'partial' &&
-                   artifact.partial === false) {
-          this.logger.debug(`will download artifact ${tableName} from dump ${artifactInfo.sequence} as first in partial`)
-          willDownload = true
-          collector.partialTables[tableName] = 'foundFull'
-        }
-
-        if (willDownload) {
-          collector.artifactCount++
-          collector.groups[tableName] = collector.groups[tableName] || []
-          collector.groups[tableName].unshift(artifactInfo)
-        }
-
-      }
-
-      cb(null, collector)
-    })
-  }
-  downloadArtifactGroup(group, cb) {
-    async.eachSeries(group, this.downloadArtifact.bind(this), cb)
-  }
-  downloadArtifact(artifact, cb) {
-    this.removeOldArtifact(artifact, (err) => {
-      if (err) return cb(err)
-      mkdirp(path.join(this.saveLocation, artifact.tableName), (err) => {
+      this.api.getSchemaVersion(schemaVersion, (err, schema) => {
         if (err) return cb(err)
+        fs.writeFile(path.join(this.saveLocation, 'schema.json'), JSON.stringify(schema, 0, 2), cb)
+      })
+    })
+  }
+  buildDir(fileInfo) {
+    return path.join(this.saveLocation, fileInfo.table)
+  }
+  buildTempPath(fileInfo) {
+    return this.buildRealPath(fileInfo) + '.tmp'
+  }
+  buildRealPath(fileInfo) {
+    return path.join(this.buildDir(fileInfo), fileInfo.filename)
+  }
+  processFile(fileInfo, cb) {
+    var filename = this.buildRealPath(fileInfo)
 
-        this.logger.info(`artifact ${artifact.tableName} from dump ${artifact.sequence} has ${artifact.artifact.files.length} to download`)
-        async.eachLimit(artifact.artifact.files, CONCURRENCY_LIMIT, (downloadLink, cb) => {
-          var fileName = path.join(this.saveLocation, artifact.tableName, `${artifact.sequence}_${downloadLink.filename}`)
-          this.fileDownloader.downloadToFile(downloadLink, artifact, fileName, cb)
-        }, (err) => {
+    this.logger.info(`checking for existence of ${fileInfo.filename}`)
+    this.fileExists(filename, (err, exists) => {
+      if (err) return cb(err)
+      if (!exists) return this.downloadFile(fileInfo, cb)
+      this.logger.info(`already have ${fileInfo.filename}, no need to redownload`)
+      return cb(null, {error: null, table: fileInfo.table, filename: fileInfo.filename, savedTo: filename, didDownload: false})
+    })
+  }
+  fileExists(filename, cb) {
+    fs.stat(filename, (err, stat) => {
+      if (err && err.code !== 'ENOENT') return cb(err)
+      if (err && err.code === 'ENOENT') return cb(null, false)
+      cb(null, true)
+    })
+  }
+  downloadFile(fileInfo, cb) {
+    var filename = this.buildRealPath(fileInfo)
+    var tmpFilename = this.buildTempPath(fileInfo)
+
+    this.logger.info(`${filename} does not exist, downloading`)
+    mkdirp(this.buildDir(fileInfo), (err) => {
+      if (err) return cb(err)
+      this.fileDownloader.downloadToFile(fileInfo, {tableName: fileInfo.table}, tmpFilename, (err) => {
+        this.logger.info(`${filename} finished`)
+        if (err) return cb(null, {error: err, table: fileInfo.table, filename: fileInfo.filename})
+        this.logger.debug(`rename ${tmpFilename} to ${filename}`)
+        fs.rename(tmpFilename, filename, (err) => {
           if (err) return cb(err)
-          this.logger.info(`artifact ${artifact.tableName} from dump ${artifact.sequence} finished`)
-          cb()
+          cb(null, {error: null, table: fileInfo.table, filename: fileInfo.filename, savedTo: filename, didDownload: true})
         })
       })
     })
   }
-  removeOldArtifact(artifact, cb) {
-    if (artifact.artifact.partial) return cb()
-    this.logger.info(`artifact ${artifact.tableName} from dump ${artifact.sequence} replaces old files, will delete old files`)
-    rimraf(path.join(this.saveLocation, artifact.tableName), cb)
-  }
-  getLatestDumps(lastSequence, collector, cb) {
-    if (typeof collector === 'function') {
-      cb = collector
-      collector = []
+  cleanupFiles(downloadedFiles, cb) {
+    var byFilename = {}
+    for (var file of downloadedFiles) {
+      byFilename[path.relative(this.saveLocation, file.savedTo)] = true
     }
-    this.api.getDumps({after: lastSequence, limit: DEFAULT_LIMIT}, (err, dumps) => {
-      if (err) return cb(err)
-      collector.unshift(...dumps)
-      if (dumps.length < DEFAULT_LIMIT) return cb(null, collector)
-      var newestSeq = dumps[0].sequence
-      this.getLatestDumps(newestSeq, collector, cb)
+    this.logger.info('searching for old files to remove')
+    glob('**/*', {cwd: this.saveLocation, nodir: true}, (err, files) => {
+      var toRemove = files.filter((f) => {
+        return f !== 'schema.json' && !byFilename[f]
+      })
+      this.logger.debug('will remove files', toRemove)
+      async.map(toRemove.map((name) => path.join(this.saveLocation, name)), fs.unlink, cb)
     })
   }
 }

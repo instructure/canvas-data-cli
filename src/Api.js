@@ -51,6 +51,9 @@ class Api {
   getFilesForDump(dumpId, cb) {
     this.makeRequest(GET, `account/self/file/byDump/${dumpId}`, cb)
   }
+  getSync(cb) {
+    this.makeRequest(GET, `account/self/file/sync`, cb)
+  }
   getFilesForTable(tableName, params, cb) {
     if (typeof params === 'function') {
       cb = params

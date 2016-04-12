@@ -21,7 +21,6 @@ function buildTestFetch(tableName) {
     tmpDir: tmpDir,
     saveLocation: path.join(tmpDir, 'dataFiles'),
     unpackLocation: path.join(tmpDir, 'unpackedFiles'),
-    stateFile: path.join(tmpDir, '/state.json'),
     apiUrl: 'https://mockApi/api',
     key: 'fakeKey',
     secret: 'fakeSecret'

@@ -18,7 +18,7 @@ class FileDownloader {
   }
   downloadToFile(downloadLink, artifact, dest, cb) {
     re.try((retryCount, done) => {
-      this.logger.debug(`downloading ${downloadLink.filename} for artifact ${artifact.tableName} from dump ${artifact.sequence}, attempt ${retryCount + 1}`)
+      this.logger.debug(`downloading ${downloadLink.filename} for artifact ${artifact.tableName}, attempt ${retryCount + 1}`)
       var r = request({method: 'GET', url: downloadLink.url})
       var badStatusCode = false
       r.on('response', (resp) => {
@@ -32,7 +32,7 @@ class FileDownloader {
           this.logger.debug(`failed attempt ${retryCount + 1} for ${downloadLink.filename}, err: ${err || badStatusCode}`)
           return done(new Error("Failed Attempt."), retryCount)
         }
-        this.logger.debug(`finished downlading ${downloadLink.filename} for artifact ${artifact.tableName} from dump ${artifact.sequence}`)
+        this.logger.debug(`finished downlading ${downloadLink.filename} for artifact ${artifact.tableName}`)
         done(null, retryCount)
       })
     }, (err, retryCount) => {
