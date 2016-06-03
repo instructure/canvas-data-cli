@@ -60,6 +60,7 @@ class Sync {
     this.logger.info('fetching current list of files from API...')
     this.api.getSync((err, toSync) => {
       if (err) return cb(err)
+      if (toSync.incomplete) this.logger.warn(`Could not retrieve a full list of files! Some incremental data will be missing!`)
       this.logger.info(`total number of files: ${toSync.files.length} files`)
       cb(null, toSync)
     })
