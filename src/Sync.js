@@ -59,8 +59,14 @@ class Sync {
   getSync(cb) {
     this.logger.info('fetching current list of files from API...')
     this.api.getSync((err, toSync) => {
+      if (err && err.errorCode === 404) {
+        this.logger.error('no files exist for account, cannot sync')
+        err.silence = true
+        return cb(err)
+      }
       if (err) return cb(err)
       if (toSync.incomplete) this.logger.warn(`Could not retrieve a full list of files! Some incremental data will be missing!`)
+
       this.logger.info(`total number of files: ${toSync.files.length} files`)
       cb(null, toSync)
     })

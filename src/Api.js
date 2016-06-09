@@ -4,6 +4,14 @@ var path = require('path')
 var request = require('request')
 var _ = require
 const GET = 'GET'
+class ApiError extends Error {
+  constructor(msg, errorCode, resp) {
+    super(msg)
+    this.errorCode = errorCode
+    this.resp = resp
+  }
+}
+
 class Api {
   constructor(config) {
     this.apiUrl = config.apiUrl
@@ -33,7 +41,7 @@ class Api {
         if (typeof body === 'object') {
           message = JSON.stringify(body, 0, 2)
         }
-        return cb(new Error(`invalid status code, got ${resp.statusCode}: ${message}`))
+        return cb(new ApiError(`invalid status code, got ${resp.statusCode}: ${message}`, resp.statusCode, body))
       }
       cb(null, body)
     })
