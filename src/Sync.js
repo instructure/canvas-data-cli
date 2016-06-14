@@ -27,8 +27,8 @@ class Sync {
           this.logResults(splitResults)
 
           if (splitResults.erroredFiles.length) {
-            this.logger.warn(`${errorFiles.length} files failed to download, please try running the sync again, if this error persists, open a ticket. No files will be cleaned up`)
-            this.logger.warn(errorFiles)
+            this.logger.warn(`${splitResults.erroredFiles.length} files failed to download, please try running the sync again, if this error persists, open a ticket. No files will be cleaned up`)
+            this.logger.warn(splitResults.erroredFiles)
             return cb(new Error('failed to download some files, try running sync again'))
           }
 
