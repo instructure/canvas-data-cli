@@ -132,7 +132,9 @@ class Sync {
     }
     this.logger.info('searching for old files to remove')
     glob('**/*', {cwd: this.saveLocation, nodir: true}, (err, files) => {
-      var toRemove = files.filter((f) => {
+      if (err) return cb(err)
+      // rewrite paths because glob returns inproper path seperators on windows (/ instead of \)
+      var toRemove = files.map((f) => f.split('/').join(path.sep)).filter((f) => {
         return f !== 'schema.json' && !byFilename[f]
       })
       this.logger.debug('will remove files', toRemove)
