@@ -6,6 +6,8 @@ var Sync = require('./Sync')
 var Config = require('./ConfigTask')
 var Unpack = require('./Unpack')
 var Fetch = require('./Fetch')
+var Grab = require('./Grab')
+var List = require('./List')
 
 var cli = yargs
   .usage('npm <command>')
@@ -56,6 +58,28 @@ var cli = yargs
       type: 'string'
     })
   })
+  .command('grab', 'grab one specific dump', (yargs) => {
+    yargs.options('config', {
+      alias: 'c',
+      demand: true,
+      describe: 'the configuration file to use',
+      type: 'string'
+    })
+    .option('dump', {
+      alias: 'd',
+      describe: 'the dump to fetch',
+      demand: true,
+      type: 'string'
+    })
+  })
+  .command('list', 'list all dumps', (yargs) => {
+    yargs.options('config', {
+      alias: 'c',
+      demand: true,
+      describe: 'the configuration file to use.',
+      type: 'string'
+    })
+  })
   .help('help')
   .alias('v', 'version')
   .version(() => require('../package').version)
@@ -65,7 +89,9 @@ var runnerMap = {
   sync: {requireConfig: true, class: Sync},
   sampleConfig: {class: Config},
   unpack: {requireConfig: true, class: Unpack},
-  fetch: {requireConfig: true, class: Fetch}
+  fetch: {requireConfig: true, class: Fetch},
+  grab: {requireConfig: true, class: Grab},
+  list: {requireConfig: true, class: List}
 }
 module.exports = {
   cli: cli,
