@@ -17,6 +17,13 @@ class Api {
     this.apiUrl = config.apiUrl
     this.apiKey = config.key
     this.apiSecret = config.secret
+    if(config.httpsProxy) {
+      if(config.proxyUsername) {
+        this.proxyUrl = `https://${config.proxyUsername}:${config.proxyPassword}@${config.httpsProxy}`
+      }else {
+        this.proxyUrl = `https://${config.httpsProxy}`
+      }
+    }
   }
   buildUrl(route, query) {
     var urlInfo = url.parse(this.apiUrl)
@@ -33,6 +40,9 @@ class Api {
       method: method,
       url: this.buildUrl(route, query),
       json: true
+    }
+    if(this.proxyUrl) {
+      reqOpts.proxy = this.proxyUrl
     }
     request(apiAuth.signRequest(this.apiKey, this.apiSecret, reqOpts), (err, resp, body) => {
       if (err) return cb

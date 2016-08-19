@@ -18,6 +18,17 @@ To generate a stub of this configuration run `canvasDataCli sampleConfig` which 
 Edit the file to point to where you want to save the files as well as the file used to track the state of which data exports you have already downloaded. By default the sample config file
 tries to pull your API key and secret from environment variables, `CD_API_KEY` and `CD_API_SECRET`, which is more secure, however, you can also hard code the credentials in the config file.
 
+#### Configuring an HTTP Proxy
+
+canvas-data-cli has support for HTTP Proxies, both with and without basic authentication. To do this there
+are three extra options you can add to your config file. `httpsProxy`, `proxyUsername`, and `proxyPassword`.
+
+| Config Option | Value                                                                                   |
+|:--------------|:----------------------------------------------------------------------------------------|
+| httpsProxy    | the `host:port` of the https proxy. Ideally it'd look like: `https_proxy_stuff.com:433` |
+| proxyUsername | the basic auth username for the https proxy.                                            |
+| proxyPassword | the basic auth password for the https proxy.                                            |
+
 ## Usage
 
 ### Syncing
