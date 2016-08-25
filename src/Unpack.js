@@ -6,6 +6,8 @@ var mkdirp = require("mkdirp")
 var ss = require("stream-stream")
 var pump = require('pump')
 var async = require('async')
+var split = require('split')
+var filter = require('stream-filter')
 
 class Unpack {
   constructor(opts, config, logger) {
@@ -65,7 +67,12 @@ class Unpack {
       if (err) return cb(err)
       files.forEach((f) => {
         var gunzip = zlib.createUnzip()
-        ssStream.write(fs.createReadStream(path.join(inputDir, f)).pipe(gunzip))
+        ssStream.write(
+          fs.createReadStream(path.join(inputDir, f))
+          .pipe(gunzip)
+          .pipe(split())
+          .pipe(filter((d) => d.toString("utf8").trim().length !== 0))
+        )
       })
     })
     pump(ssStream, outputStream, cb)
