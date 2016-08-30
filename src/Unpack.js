@@ -1,11 +1,13 @@
-var zlib = require("zlib")
-var fs = require("fs")
-var path = require("path")
-var stream = require("stream")
-var mkdirp = require("mkdirp")
-var ss = require("stream-stream")
-var pump = require('pump')
-var async = require('async')
+const zlib = require("zlib")
+const fs = require("fs")
+const path = require("path")
+const stream = require("stream")
+const mkdirp = require("mkdirp")
+const Multistream = require("multistream")
+const pump = require('pump')
+const async = require('async')
+const split = require('split')
+const mapS = require('map-stream')
 
 class Unpack {
   constructor(opts, config, logger) {
@@ -15,14 +17,10 @@ class Unpack {
     this.outputLocation = path.resolve(process.cwd(), config.unpackLocation || './unpackedFiles')
     this.schemaLocation = path.join(this.sourceLocation, 'schema.json')
   }
-  buildTitlesStream(table) {
-    var titles = table.columns.map((c) => {
+  buildTitlesHeader(table) {
+    return table.columns.map((c) => {
       return c.name
-    }).join("\t")
-    var s = new stream.Readable()
-    s.push(titles)
-    s.push(null)
-    return s
+    }).join("\t") + '\n'
   }
   loadSchema(cb) {
     fs.stat(this.schemaLocation, (err, stat) => {
@@ -30,14 +28,14 @@ class Unpack {
         this.logger.error('could not find schema, have you downloaded files yet?')
         return cb(err)
       }
-      var schema = require(this.schemaLocation)
+      const schema = require(this.schemaLocation)
       cb(null, schema)
     })
   }
   addTitleAndUnzip(schema, sourceDir, outputDir, cb) {
-    var toUnpack = []
-    for (var key in schema.schema) {
-      var table = schema.schema[key]
+    const toUnpack = []
+    for (let key in schema.schema) {
+      let table = schema.schema[key]
       if (this.tableFilter.indexOf(table.tableName) >= 0 ) {
         toUnpack.push(table)
       }
@@ -48,9 +46,9 @@ class Unpack {
       return cb()
     }
     async.each(toUnpack, (table, cb) => {
-      var inputDir = path.join(sourceDir, table.tableName)
-      var outputTableName = path.join(outputDir, table.tableName + '.txt')
-      var outputStream = fs.createWriteStream(outputTableName)
+      const inputDir = path.join(sourceDir, table.tableName)
+      const outputTableName = path.join(outputDir, table.tableName + '.txt')
+      const outputStream = fs.createWriteStream(outputTableName)
       this.logger.info(`outputting ${table.tableName} to ${outputTableName}`)
       this.processTable(table, inputDir, outputStream, (err) => {
         if (err) return cb(err)
@@ -59,16 +57,23 @@ class Unpack {
     }, cb)
   }
   processTable(table, inputDir, outputStream, cb) {
-    var ssStream = new ss()
-    ssStream.write(this.buildTitlesStream(table))
+    outputStream.write(this.buildTitlesHeader(table))
     fs.readdir(inputDir, (err, files) => {
       if (err) return cb(err)
-      files.forEach((f) => {
-        var gunzip = zlib.createUnzip()
-        ssStream.write(fs.createReadStream(path.join(inputDir, f)).pipe(gunzip))
+      const streams = files.map((f) => {
+        const gunzip = zlib.createUnzip()
+        return fs.createReadStream(path.join(inputDir, f))
+        .pipe(gunzip)
+        .pipe(split())
+        .pipe(mapS((item, cb) => {
+          if (item.trim() === '') return cb()
+          // add newlines for each row
+          return cb(null, item + '\n')
+        }))
       })
+      const multi = new Multistream(streams)
+      pump(multi, outputStream, cb)
     })
-    pump(ssStream, outputStream, cb)
   }
   run(cb) {
     this.loadSchema((err, schema) => {

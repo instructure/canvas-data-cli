@@ -1,6 +1,6 @@
 {
   "name": "canvas-data-cli",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
@@ -27,13 +27,13 @@
     "async": "^1.5.0",
     "glob": "^7.0.3",
     "lodash": "^3.10.1",
+    "map-stream": "0.0.6",
     "mkdirp": "^0.5.1",
+    "multistream": "^2.1.0",
     "pump": "^1.0.1",
     "re": "^0.1.4",
     "request": "^2.65.0",
     "split": "^1.0.0",
-    "stream-filter": "^1.0.0",
-    "stream-stream": "^1.2.6",
     "yargs": "^3.29.0"
   },
   "devDependencies": {
