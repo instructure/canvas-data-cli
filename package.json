@@ -4,8 +4,15 @@
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --compilers js:babel/register test/*Test.js",
+    "test": "nyc mocha --compilers js:babel/register test/*Test.js",
     "prepublishOnly": "babel src --out-dir lib/"
+  },
+  "nyc": {
+    "reporter": [
+      "lcov",
+      "text-summary"
+    ],
+    "report-dir": "./report"
   },
   "bin": {
     "canvasDataCli": "./bin/canvasDataCli"
@@ -42,6 +49,7 @@
     "chai-fs": "^0.1.0",
     "mocha": "^2.3.3",
     "mocha-sinon": "^1.1.5",
+    "nyc": "^10.0.0",
     "rimraf": "^2.4.3",
     "sinon": "^1.17.3",
     "touch": "^1.0.0"

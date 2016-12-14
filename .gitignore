@@ -3,3 +3,4 @@ lib/
 config.js
 downloads/
 state.json
+report/
