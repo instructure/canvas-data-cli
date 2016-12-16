@@ -99,7 +99,8 @@ describe('Unpack', () => {
     if (!toDelete) return done()
     rimraf(toDelete, done)
   })
-  describe('processTable', () => {
+  describe('processTable', function() {
+    this.timeout(4000)
     let unpack = new Unpack({}, {saveLocation: 'fake', unpackLocation: 'fake2'}, logger)
     it('should handle a single file', (done) => {
       const d = path.join(tmpdir, 'single')
