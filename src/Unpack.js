@@ -60,18 +60,22 @@ class Unpack {
     outputStream.write(this.buildTitlesHeader(table))
     fs.readdir(inputDir, (err, files) => {
       if (err) return cb(err)
-      const streams = files.map((f) => {
-        const gunzip = zlib.createUnzip()
-        return fs.createReadStream(path.join(inputDir, f))
-        .pipe(gunzip)
-        .pipe(split())
-        .pipe(mapS((item, cb) => {
-          if (item.trim() === '') return cb()
-          // add newlines for each row
-          return cb(null, item + '\n')
-        }))
+      const streamCreators = files.map((f) => {
+        // return a function so that mulitstream
+        // lazily creates the streams
+        return function() {
+          const gunzip = zlib.createUnzip()
+          return fs.createReadStream(path.join(inputDir, f))
+          .pipe(gunzip)
+          .pipe(split())
+          .pipe(mapS((item, cb) => {
+            if (item.trim() === '') return cb()
+            // add newlines for each row
+            return cb(null, item + '\n')
+          }))
+        }
       })
-      const multi = new Multistream(streams)
+      const multi = new Multistream(streamCreators)
       pump(multi, outputStream, cb)
     })
   }

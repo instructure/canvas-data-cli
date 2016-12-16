@@ -4,3 +4,4 @@ config.js
 downloads/
 state.json
 report/
+.nyc_output/
