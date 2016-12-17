@@ -2,22 +2,22 @@ var fs = require('fs')
 var request = require('request')
 var pump = require('pump')
 var Re = require('re')
-const reOpts = {
-  retries: 5,
-  strategy: {
-    "type": Re.STRATEGIES.EXPONENTIAL,
-    "initial": 100,
-    "base": 2
-  }
-}
-var re = new Re(reOpts)
 
 class FileDownloader {
-  constructor(logger) {
+  constructor(logger, reOpts) {
     this.logger = logger
+    this.reOpts = reOpts || {
+      retries: 5,
+      strategy: {
+        "type": Re.STRATEGIES.EXPONENTIAL,
+        "initial": 100,
+        "base": 2
+      }
+    }
+    this.re = new Re(reOpts)
   }
   downloadToFile(downloadLink, artifact, dest, cb) {
-    re.try((retryCount, done) => {
+    this.re.try((retryCount, done) => {
       this.logger.debug(`downloading ${downloadLink.filename} for artifact ${artifact.tableName}, attempt ${retryCount + 1}`)
       var r = request({method: 'GET', url: downloadLink.url})
       var badStatusCode = false

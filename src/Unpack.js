@@ -53,6 +53,7 @@ class Unpack {
       this.processTable(table, inputDir, outputStream, (err) => {
         if (err) return cb(err)
         this.logger.info(`finished with ${table.tableName}`)
+        cb()
       })
     }, cb)
   }

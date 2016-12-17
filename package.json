@@ -41,6 +41,7 @@
     "map-stream": "0.0.6",
     "mkdirp": "^0.5.1",
     "multistream": "^2.1.0",
+    "proxyquire": "^1.7.10",
     "pump": "^1.0.1",
     "re": "^0.1.4",
     "request": "^2.65.0",

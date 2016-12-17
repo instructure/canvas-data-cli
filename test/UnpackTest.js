@@ -99,6 +99,84 @@ describe('Unpack', () => {
     if (!toDelete) return done()
     rimraf(toDelete, done)
   })
+  describe('loadSchema', () => {
+    let unpack = new Unpack({}, {saveLocation: 'fake', unpackLocation: 'fake2'}, logger)
+    it('should work to load a schema', (done) => {
+      unpack.schemaLocation = path.join(__dirname, './fixtures/mockSchema.json')
+      unpack.loadSchema((err, schema) => {
+        assert.ifError(err)
+        assert(schema.fakeSchema)
+        done()
+      })
+    })
+    it('should throw an error if no schema', (done) => {
+      unpack.schemaLocation = path.join(__dirname, './fixtures/missing')
+      unpack.loadSchema((err, schema) => {
+        assert(err instanceof Error)
+        done()
+      })
+    })
+  })
+  describe('addTitleAndUnzip', () => {
+    const schema = {
+      schema: {
+        one: {
+          tableName: 'one',
+          columns: [
+            {name: "id"},
+            {name: "type"},
+            {name: "name"}
+          ]
+        },
+        two: {
+          tableName: 'two',
+          columns: [
+            {name: "letter"},
+            {name: "type"}
+          ]
+        },
+        three: {
+          tableName: 'three',
+          columns: [
+            {name: "sound"}
+          ]
+        }
+      }
+    }
+    it('should exit early if nothing matches', (done) => {
+      let unpack = new Unpack({filter: []}, {saveLocation: 'fake', unpackLocation: 'fake2'}, logger)
+      unpack.addTitleAndUnzip(schema, 'fake', 'fake', (err, res) => {
+        assert.ifError(err)
+        assert(res == null)
+        done()
+      })
+    })
+    it('should write out files to where we expect', (done) => {
+      const d = path.join(tmpdir, 'full')
+      toDelete = d
+      const mockDump = path.join(__dirname, './fixtures/mockDump')
+      let unpack = new Unpack({filter: ['one', 'two']}, {saveLocation: mockDump, unpackLocation: d}, logger)
+      mkdirp(d, (err) => {
+        assert.ifError(err)
+        unpack.addTitleAndUnzip(schema, mockDump, d, (err) => {
+          assert.ifError(err)
+          fs.readFile(path.join(d, 'one.txt'), 'utf8', (err, out) => {
+            assert.ifError(err)
+            assert.equal(out, 'id\ttype\tname\n1\tfoo\tbob\n2\tbar\tsteve\n')
+            fs.readFile(path.join(d, 'two.txt'), 'utf8', (err, out) => {
+              assert.ifError(err)
+              assert.equal(out, 'letter\ttype\na\tcat\nb\tdog\n')
+              fs.access(path.join(d, 'three.txt'), fs.F_OK, (err) => {
+                assert(err instanceof Error)
+                done()
+              })
+            })
+          })
+        })
+      })
+    })
+
+  })
   describe('processTable', function() {
     this.timeout(4000)
     let unpack = new Unpack({}, {saveLocation: 'fake', unpackLocation: 'fake2'}, logger)
@@ -174,6 +252,21 @@ describe('Unpack', () => {
         })
       })
 
+    })
+  })
+  describe('run', () => {
+    it('should ensure the unpack location is created', (done) => {
+      const d = path.join(tmpdir, 'run')
+      let unpack = new Unpack({}, {saveLocation: 'fake', unpackLocation: d}, logger)
+      unpack.loadSchema = function(cb) { cb(null, {mocked: true}) }
+      unpack.addTitleAndUnzip = function(s, sourceDir, outDir, cb) { cb() }
+      unpack.run((err) => {
+        assert.ifError(err)
+        fs.access(d, fs.F_OK, (err) => {
+          assert.ifError(err)
+          done()
+        })
+      })
     })
   })
 })
