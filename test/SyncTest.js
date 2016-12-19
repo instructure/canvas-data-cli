@@ -57,6 +57,87 @@ function fileExists(filename, cb) {
 }
 
 describe('SyncTest', function() {
+  describe('run', () => {
+    it('should successfully call back when done', (done) => {
+      const config = {saveLocation: '/tmp'}
+      const sync = new Sync({}, config, logger)
+      sync.getSync = function(cb) {
+        cb(null, {files: [1, 2, 3]})
+      }
+      sync.downloadSchema = function(verson, cb) {
+        cb()
+      }
+      sync.processFile = function(fileInfo, cb) {
+        if (fileInfo === 2) {
+          return cb(null, {filename: fileInfo})
+        }
+        cb(null, {didDownload: true, filename: fileInfo})
+      }
+      sync.cleanupFiles = function(results, cb) {
+        cb()
+      }
+      sync.run(done)
+    })
+    it('should fail when some files error', (done) => {
+      const config = {saveLocation: '/tmp'}
+      const sync = new Sync({}, config, logger)
+      sync.getSync = function(cb) {
+        cb(null, {files: [1, 2, 3]})
+      }
+      sync.downloadSchema = function(verson, cb) {
+        cb()
+      }
+      sync.processFile = function(fileInfo, cb) {
+        if (fileInfo === 2) {
+          return cb(null, {error: true})
+        }
+        cb(null, {didDownload: true, filename: fileInfo})
+      }
+      sync.cleanupFiles = function(results, cb) {
+        cb()
+      }
+      sync.run((err) => {
+        assert(err instanceof Error)
+        done()
+      })
+    })
+  })
+  describe('getSync', () => {
+    const config = {saveLocation: '/tmp'}
+    const sync = new Sync({}, config, logger)
+    it('should callback with a sync if api call worked', (done) => {
+      sync.api.getSync = function(cb) {
+        cb(null, {files: [1, 2, 3]})
+      }
+      sync.getSync((err, data) => {
+        assert.ifError(err)
+        assert.deepEqual(data, {files: [1, 2, 3]})
+        done()
+      })
+    })
+    it('should callback with an error if api sync failed', (done) => {
+      sync.api.getSync = function(cb) {
+        cb(new Error('bah'))
+      }
+      sync.getSync((err, data) => {
+        assert(err instanceof Error)
+        done()
+      })
+    })
+    it('should silence 404s', (done) => {
+      sync.api.getSync = function(cb) {
+        const e = new Error('bah')
+        e.errorCode = 404
+        cb(e)
+      }
+      sync.getSync((err, data) => {
+        assert(err instanceof Error)
+        assert(err.silence)
+        done()
+      })
+    })
+
+  })
   describe('dirHandling', () => {
     var {sync} = buildTestSync()
     after((done) => cleanupSync(sync, done))

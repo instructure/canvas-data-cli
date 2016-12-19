@@ -12,6 +12,10 @@
       "lcov",
       "text-summary"
     ],
+    "include": [
+      "src/*.js",
+      "src/**/*.js"
+    ],
     "report-dir": "./report"
   },
   "bin": {

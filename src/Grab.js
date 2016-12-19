@@ -18,7 +18,7 @@ class Grab {
   formatResult(files) {
     let finalResult = []
     Object.keys(files.artifactsByTable).forEach((currentValue) => {
-      let artifact = files.artifactsByTable[currentValue]
+      const artifact = files.artifactsByTable[currentValue]
       artifact.files.forEach((currentFile) => {
         finalResult.push({
           tableName: currentValue,
@@ -31,14 +31,13 @@ class Grab {
     return finalResult
   }
   run(cb) {
-    let saveFolder = path.join(this.saveLocation, this.dump)
+    const saveFolder = path.join(this.saveLocation, this.dump)
     mkdirp(saveFolder, (err) => {
+      if (err) return cb(err)
       this.api.getFilesForDump(this.dump, (err, files) => {
-        if(err) {
-          return cb(err)
-        }
+        if(err) return cb(err)
 
-        let formattedTables = this.formatResult(files)
+        const formattedTables = this.formatResult(files)
 
         async.map(formattedTables, (file, innerCb) => {
           this.fileDownloader.downloadToFile(

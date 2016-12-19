@@ -9,7 +9,7 @@ class List {
   }
   run(cb) {
     this.api.getDumps((err, dumps) => {
-      if(err) cb(err)
+      if (err) return cb(err)
       dumps.map((dump) => {
         this.logger.info(`- Dump ID: [ ${dump.dumpId} ]
 Sequence: [ ${dump.sequence} ]
@@ -19,7 +19,8 @@ Finished: [ ${dump.finished} ]
 Expires At: [ ${dump.expires} ]
 Created At: [ ${dump.createdAt} ]`)
       })
-    }, cb)
+      cb()
+    })
   }
 }
 module.exports = List

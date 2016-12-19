@@ -17,11 +17,14 @@ class Api {
     this.apiUrl = config.apiUrl
     this.apiKey = config.key
     this.apiSecret = config.secret
-    if(config.httpsProxy) {
-      if(config.proxyUsername) {
-        this.proxyUrl = `https://${config.proxyUsername}:${config.proxyPassword}@${config.httpsProxy}`
-      }else {
-        this.proxyUrl = `https://${config.httpsProxy}`
+    this.proxyUrl = this.buildProxyUrl(config)
+  }
+  buildProxyUrl(config) {
+    if (config.httpsProxy) {
+      if (config.proxyUsername) {
+        return `https://${config.proxyUsername}:${config.proxyPassword}@${config.httpsProxy}`
+      } else {
+        return `https://${config.httpsProxy}`
       }
     }
   }
@@ -45,7 +48,7 @@ class Api {
       reqOpts.proxy = this.proxyUrl
     }
     request(apiAuth.signRequest(this.apiKey, this.apiSecret, reqOpts), (err, resp, body) => {
-      if (err) return cb
+      if (err) return cb(err)
       if (resp.statusCode !== 200) {
         var message = body
         if (typeof body === 'object') {
@@ -82,7 +85,11 @@ class Api {
   getSchemas(cb) {
     this.makeRequest(GET, `schema`, cb)
   }
+  // TODO: kill this, keep just in case people are using the API
   getLastestSchema(cb) {
+    this.getLatestSchema(cb)
+  }
+  getLatestSchema(cb) {
     this.makeRequest(GET, 'schema/latest', cb)
   }
   getSchemaVersion(version, cb) {
