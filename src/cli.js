@@ -78,6 +78,11 @@ var cli = yargs
       demand: true,
       describe: 'the configuration file to use.',
       type: 'string'
+    }).option('json', {
+      alias: 'j',
+      describe: 'output in json format',
+      demand: false,
+      type: 'boolean'
     })
   })
   .help('help')
@@ -129,14 +134,16 @@ module.exports = {
     }
 
     var runner = new RunnerClass(argv, config, logger)
-    runner.run((err) => {
+    runner.run((err, showComplete = true) => {
       if (err) {
         logger.error('an error occured')
         logger.error(err)
         if (err.stack && !err.silence) logger.error(err.stack)
         process.exit(1)
       }
-      logger.info(`${command} command completed successfully`)
+      if (showComplete) {
+        logger.info(`${command} command completed successfully`)
+      }
     })
   }
 }
