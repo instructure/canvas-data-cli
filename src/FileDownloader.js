@@ -14,7 +14,7 @@ class FileDownloader {
         "base": 2
       }
     }
-    this.re = new Re(reOpts)
+    this.re = new Re(this.reOpts)
   }
   downloadToFile(downloadLink, artifact, dest, cb) {
     this.re.try((retryCount, done) => {

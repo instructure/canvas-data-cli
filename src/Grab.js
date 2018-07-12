@@ -14,6 +14,7 @@ class Grab {
     this.dump = opts.dump
     this.saveLocation = path.resolve(process.cwd(), config.saveLocation)
     this.fileDownloader = new FileDownloader(logger)
+    this.maxConnections = config.maxConnections || 200
   }
   formatResult(files) {
     let finalResult = []
@@ -39,7 +40,7 @@ class Grab {
 
         const formattedTables = this.formatResult(files)
 
-        async.map(formattedTables, (file, innerCb) => {
+        async.mapLimit(formattedTables, this.maxConnections, (file, innerCb) => {
           this.fileDownloader.downloadToFile(
             file,
             {tableName: file.tableName, sequence: file.sequence},
