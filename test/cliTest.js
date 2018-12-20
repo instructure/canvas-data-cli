@@ -27,7 +27,7 @@ mocks.logger = logger
 const cli = proxyquire('../src/cli', mocks)
 
 describe('cli', () => {
-  const configFileName = path.join(os.tmpDir(), 'canDataCliConfig.js')
+  const configFileName = path.join(os.tmpdir(), 'canDataCliConfig.js')
   before((done) => {
     fs.writeFile(configFileName, '{}', done)
   })

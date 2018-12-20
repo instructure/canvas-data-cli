@@ -85,6 +85,8 @@ as this has the potential for creating very large files.
 
 ## Developing
 
+Development should be done in Node v8 or greater to take advantage of new node.js and npm standards
+
 Process:
 1. Write some code
 2. Write tests
