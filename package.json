@@ -1,6 +1,6 @@
 {
   "name": "canvas-data-cli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "A CLI tool for interacting with the Canvas Data API",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,7 @@
     "url": "git+https://github.com/instructure/canvas-data-cli.git"
   },
   "engines": {
-    "node": ">=0.12.0"
+    "node": ">=6.0"
   },
   "author": "",
   "license": "MIT",
@@ -51,7 +51,7 @@
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-core": "^6.26.3",
-    "babel-preset-node8": "^1.2.0",
+    "babel-preset-env": "^1.7.0",
     "chai": "^3.5.0",
     "chai-fs": "^0.1.0",
     "mocha": "^5.2.0",
