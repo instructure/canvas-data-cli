@@ -1,4 +1,4 @@
-FROM instructure/node:latest
+FROM instructure/node:10
 
 USER root
 RUN mkdir -p /usr/src/app/report && chown -R docker /usr/src/app
