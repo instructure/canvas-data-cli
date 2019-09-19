@@ -109,6 +109,41 @@ describe('FetchTest', function() {
       assert.equal(ret[3].sequence, 2)
       assert.equal(ret[3].filename, 'filef1.tar.gz')
     })
+    it('should merge duplicate non partial sequences', () => {
+      var {fetch, config} = buildTestFetch('requests')
+      var ret = fetch.getNewest({
+        table: 'requests',
+        history: [
+          {
+            dumpId: '1234',
+            sequence: 1,
+            partial: false,
+            files: [
+              {url: 'http://url_to_download/file1.tar.gz', filename: 'file1.tar.gz'},
+              {url: 'http://url_to_download/file2.tar.gz', filename: 'file2.tar.gz'}
+            ]
+          },
+          {
+            dumpId: '1234',
+            sequence: 1,
+            partial: false,
+            files: [
+              {url: 'http://url_to_download/file3.tar.gz', filename: 'file3.tar.gz'},
+              {url: 'http://url_to_download/file4.tar.gz', filename: 'file4.tar.gz'}
+            ]
+          }
+        ]
+      })
+      assert.equal(ret.length, 4)
+      assert.equal(ret[0].sequence, 1)
+      assert.equal(ret[0].filename, 'file1.tar.gz')
+      assert.equal(ret[1].sequence, 1)
+      assert.equal(ret[1].filename, 'file2.tar.gz')
+      assert.equal(ret[2].sequence, 1)
+      assert.equal(ret[2].filename, 'file3.tar.gz')
+      assert.equal(ret[3].sequence, 1)
+      assert.equal(ret[3].filename, 'file4.tar.gz')
+    })
   })
   describe('run', () => {
     it('it should write files for a non partial table', function(done) {

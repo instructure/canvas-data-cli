@@ -16,18 +16,27 @@ class Fetch {
   }
   getNewest(files) {
     let toDownload = []
-    for (let element of files.history) {
-      let seq = element.sequence
-      let files = element.files.map((file) => {
-        file.sequence = seq
+    // We can get multiple entries in files.history for a single sequence / dumpId.
+    // So group these entries up by sequence ID.
+    let groups = _.groupBy(files.history, 'sequence')
+    // Walk through the groups in the same sequence order as provided by the API
+    let sequences = _.map(files.history, 'sequence')
+    for (let sequence of sequences) {
+      let group = groups[sequence]
+      // If /any/ in the group is marked as partial, we'll consider that sequence
+      // to be completely partial
+      let partial = _.some(group, 'partial')
+      let files = _.flatten(_.map(group, 'files')).map((file) => {
+        file.sequence = sequence
         return file
       })
 
-      if (!element.partial) {
-        toDownload.push(...files)
+      toDownload.push(...files)
+
+      if (!partial) {
         break
       }
-      toDownload.push(...files)
+
     }
     return toDownload
   }
@@ -38,6 +47,7 @@ class Fetch {
         if (err) return cb(err)
 
         let toDownload = this.getNewest(files)
+        this.logger.info(`Files (${toDownload.length})`, toDownload)
 
         async.map(toDownload, (file, innerCb) => {
           this.fileDownloader.downloadToFile(

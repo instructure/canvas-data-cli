@@ -47,7 +47,7 @@ var mockApiObjects = module.exports = {
     opts.entryOpts = opts.entryOpts || []
     var numEntries = opts.numEntries || 2
     var entries = _.fill(Array(numEntries), 0).map((v, index) => {
-      var entryOpts = _.defaults(opts.entryOpts[index], {
+      var entryOpts = _.defaults(opts.entryOpts[index] || {}, {
         sequence: index,
         dumpId: '1234' + index
       })
