@@ -9,6 +9,7 @@ var Fetch = require('./Fetch')
 var Grab = require('./Grab')
 var List = require('./List')
 var GetApi = require('./GetApi')
+var HistoricalRequests = require('./HistoricalRequests')
 
 var cli = yargs
   .usage('canvasDataCli <command>')
@@ -99,6 +100,14 @@ var cli = yargs
       type: 'string'
     })
   })
+  .command('historical-requests', 'show historical requests by date ranges', (yargs) => {
+    yargs.options('config', {
+      alias: 'c',
+      demand: true,
+      describe: 'the configuration file to use.',
+      type: 'string'
+    })
+  })
   .help('help')
   .alias('v', 'version')
   .version(() => require('../package').version)
@@ -111,7 +120,8 @@ var runnerMap = {
   fetch: {requireConfig: true, class: Fetch},
   grab: {requireConfig: true, class: Grab},
   list: {requireConfig: true, class: List},
-  api: {requireConfig: true, class: GetApi}
+  api: {requireConfig: true, class: GetApi},
+  'historical-requests': {requireConfig: true, class: HistoricalRequests}
 }
 module.exports = {
   cli: cli,

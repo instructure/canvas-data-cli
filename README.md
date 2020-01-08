@@ -91,6 +91,44 @@ use case for which is debugging and development.
 canvasDataCli api -c config.js -r /account/self/dump
 ```
 
+### Historical Requests
+
+Periodically requests data is regrouped into collections that span more than
+just a single day. In this case, the date that the files were generated differs
+from the time that the included requests were made. To make it easier to
+identify which files contain the requests made during a particular time range,
+we have the `historical-requests` subcommand.
+
+```Shell
+canvasDataCli historical-requests -c config.js
+```
+
+Its output takes the form:
+
+```json
+{
+  "dumpId": "...",
+  "ranges": {
+    "20180315_20180330": [
+      {
+        "url": "...",
+        "filename": "..."
+      },
+      {
+        "url": "...",
+        "filename": "..."
+      }
+    ],
+    "20180331_20180414": [
+      {
+        "url": "...",
+        "filename": "..."
+      }
+    ]
+  }
+}
+```
+
 
 ## Developing
 
