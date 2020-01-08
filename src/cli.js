@@ -8,6 +8,7 @@ var Unpack = require('./Unpack')
 var Fetch = require('./Fetch')
 var Grab = require('./Grab')
 var List = require('./List')
+var GetApi = require('./GetApi')
 
 var cli = yargs
   .usage('canvasDataCli <command>')
@@ -85,6 +86,19 @@ var cli = yargs
       type: 'boolean'
     })
   })
+  .command('api', 'submit API GET request', (yargs) => {
+    yargs.options('config', {
+      alias: 'c',
+      demand: true,
+      describe: 'the configuration file to use.',
+      type: 'string'
+    }).option('route', {
+      alias: 'r',
+      describe: 'route to request',
+      demand: true,
+      type: 'string'
+    })
+  })
   .help('help')
   .alias('v', 'version')
   .version(() => require('../package').version)
@@ -96,7 +110,8 @@ var runnerMap = {
   unpack: {requireConfig: true, class: Unpack},
   fetch: {requireConfig: true, class: Fetch},
   grab: {requireConfig: true, class: Grab},
-  list: {requireConfig: true, class: List}
+  list: {requireConfig: true, class: List},
+  api: {requireConfig: true, class: GetApi}
 }
 module.exports = {
   cli: cli,

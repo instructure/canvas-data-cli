@@ -82,6 +82,15 @@ canvasDataCli unpack -c path/to/config.js -f user_dim,account_dim
 This command will unpack the user_dim and account_dim tables to a directory. Currently, you explictly have to give the files you want to unpack
 as this has the potential for creating very large files.
 
+### API
+
+This subcommand is designed to allow users to make API calls directly. The main
+use case for which is debugging and development.
+
+```Shell
+canvasDataCli api -c config.js -r /account/self/dump
+```
+
 
 ## Developing
 
