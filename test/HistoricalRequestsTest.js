@@ -5,7 +5,7 @@ const logger = require('./fixtures/mockLogger')
 
 const assertHistoricalRequests = (input, expected, done) => {
   const hr = new HistoricalRequests({}, {}, logger)
-  hr.api.getFilesForTable = (table, cb) => cb(null, input)
+  hr.api.getSync = (cb) => cb(null, input)
 
   hr.run((err, response) => {
     assert.ifError(err)
@@ -18,18 +18,13 @@ describe('HistoricalRequests', () => {
   describe('run', () => {
     it('ignores daily dumps', (done) => {
       const input = {
-        table: 'requests',
-        history: [
+        schemaVersion: 'test',
+        files: [
           {
-            dumpId: 'one',
-            partial: true,
-            files: [
-              {
-                url: 'https://s3.amazonaws.com/timestamp/dw_split/account/requests/b%3D1/part-1',
-                filename: 'requests-1.gz'
-              }
-            ],
-            sequence: 1
+            url: 'https://s3.amazonaws.com/timestamp/dw_split/account/requests/b%3D1/part-1',
+            filename: 'requests-1.gz',
+            table: 'requests',
+            partial: true
           }
         ]
       }
@@ -38,104 +33,70 @@ describe('HistoricalRequests', () => {
       assertHistoricalRequests(input, expected, done)
     })
 
-    it('groups across dump entries', (done) => {
+    it('ignores other tables', (done) => {
       const input = {
-        table: 'requests',
-        history: [
+        schemaVersion: 'test',
+        files: [
           {
-            dumpId: 'one',
-            partial: false,
-            files: [
-              {
-                url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
-                filename: 'requests-1.gz'
-              }
-            ],
-            sequence: 1
-          },
-          {
-            dumpId: 'one',
-            partial: false,
-            files: [
-              {
-                url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
-                filename: 'requests-2.gz'
-              }
-            ],
-            sequence: 1
+            url: 'https://s3.amazonaws.com/timestamp/dw_split/account/users/b%3D1/part-1',
+            filename: 'users-1.gz',
+            table: 'users',
+            partial: false
           }
         ]
       }
-      const expected = {
-        dumpId: 'one',
-        ranges: {
-          'range-1': [
-            {
-              url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
-              filename: 'requests-1.gz'
-            },
-            {
-              url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
-              filename: 'requests-2.gz'
-            }
-          ]
-        }
-      }
+      const expected = {}
+
       assertHistoricalRequests(input, expected, done)
     })
 
-    it('groups multiple ranges', (done) => {
+    it('groups ranges', (done) => {
       const input = {
-        table: 'requests',
-        history: [
+        schemaVersion: 'test',
+        files: [
           {
-            dumpId: 'one',
-            partial: false,
-            files: [
-              {
-                url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
-                filename: 'requests-1.gz'
-              },
-              {
-                url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
-                filename: 'requests-2.gz'
-              }
-            ],
-            sequence: 1
+            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
+            filename: 'requests-1.gz',
+            table: 'requests',
+            partial: false
           },
           {
-            dumpId: 'one',
-            partial: false,
-            files: [
-              {
-                url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-2/0/part-1',
-                filename: 'requests-1.gz'
-              }
-            ],
-            sequence: 1
+            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
+            filename: 'requests-2.gz',
+            table: 'requests',
+            partial: false
+          },
+          {
+            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-2/0/part-1',
+            filename: 'requests-1.gz',
+            table: 'requests',
+            partial: false
           }
         ]
       }
       const expected = {
-        dumpId: 'one',
-        ranges: {
-          'range-1': [
-            {
-              url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
-              filename: 'requests-1.gz'
-            },
-            {
-              url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
-              filename: 'requests-2.gz'
-            }
-          ],
-          'range-2': [
-            {
-              url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-2/0/part-1',
-              filename: 'requests-1.gz'
-            }
-          ]
-        }
+        'range-1': [
+          {
+            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
+            filename: 'requests-1.gz',
+            table: 'requests',
+            partial: false
+          },
+          {
+            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
+            filename: 'requests-2.gz',
+            table: 'requests',
+            partial: false
+          }
+        ],
+        'range-2': [
+          {
+            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-2/0/part-1',
+            filename: 'requests-1.gz',
+            table: 'requests',
+            partial: false
+          }
+        ]
       }
       assertHistoricalRequests(input, expected, done)
     })
@@ -143,7 +104,7 @@ describe('HistoricalRequests', () => {
     it('should propagate errors', (done) => {
       const expected = {success: false}
       const hr = new HistoricalRequests({}, {}, logger)
-      hr.api.getFilesForTable = (table, cb) => cb(expected, null)
+      hr.api.getSync = (cb) => cb(expected, null)
 
       hr.run((err) => {
         assert.deepEqual(err, expected)

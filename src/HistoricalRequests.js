@@ -19,23 +19,20 @@ class HistoricalRequests {
     return url.split('/')[7]
   }
   run(cb) {
-    this.api.getFilesForTable('requests', (err, response) => {
+    this.api.getSync((err, response) => {
       if (err) return cb(err)
-      //
+
       // Get all the not-partial files and figure out their range
-      const results = lodash.merge({}, ...response.history
-        .filter((dump) => !dump.partial)
-        .map((dump) => {
-          const maps = dump.files.map((file) => {
-            return {
-              dumpId: dump.dumpId,
-              ranges: {
-                [this.getRangeForFile(file.url)]: [file]
-              }
-            }
-          })
-          return lodash.merge({}, ...maps, customizer)
+      const files = response.files
+        .filter((file) => file.table == 'requests')
+        .filter((file) => !file.partial);
+      const results = lodash.merge({}, ...files
+        .map((file) => {
+          return {
+            [this.getRangeForFile(file.url)]: [file]
+          }
         }), customizer)
+
       this.logger.info(JSON.stringify(results, null, 2))
       cb(null, results)
     })
