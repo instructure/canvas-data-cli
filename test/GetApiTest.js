@@ -8,7 +8,7 @@ describe('GetApi', () => {
     it('should get successfully', (done) => {
       const expected = {success: true}
       const get = new GetApi({}, {}, logger)
-      get.api.makeRequest = (method, path, cb) => cb(null, expected)
+      get.api.makeRequest = (method, path, params, cb) => cb(null, expected)
 
       get.run((err, response) => {
         assert.ifError(err)
@@ -20,7 +20,7 @@ describe('GetApi', () => {
     it('should propagate errors', (done) => {
       const expected = {success: false}
       const get = new GetApi({}, {}, logger)
-      get.api.makeRequest = (method, path, cb) => cb(expected, null)
+      get.api.makeRequest = (method, path, params, cb) => cb(expected, null)
 
       get.run((err) => {
         assert.deepEqual(err, expected)

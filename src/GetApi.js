@@ -7,7 +7,7 @@ class GetApi {
     this.api = new Api(config)
   }
   run(cb) {
-    this.api.makeRequest('GET', this.opts.route, (err, response) => {
+    this.api.makeRequest('GET', this.opts.route, JSON.parse(this.opts.params || '{}'), (err, response) => {
       if (err) return cb(err)
       this.logger.info(JSON.stringify(response, null, 2))
       return cb(null, response)

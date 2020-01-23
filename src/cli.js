@@ -98,6 +98,11 @@ var cli = yargs
       describe: 'route to request',
       demand: true,
       type: 'string'
+    }).option('params', {
+      alias: 'p',
+      desscribe: 'params in JSON form',
+      demand: false,
+      type: 'string'
     })
   })
   .command('historical-requests', 'show historical requests by date ranges', (yargs) => {
