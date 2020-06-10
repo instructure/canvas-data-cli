@@ -5,7 +5,7 @@ def sendSlack(success) {
   color  = success ? "good"   : "bad"
   short_job_name = env.JOB_NAME.replaceAll(/.*\//, "");
   message = "[$short_job_name] <$env.GERRIT_CHANGE_URL|$env.GERRIT_CHANGE_SUBJECT> *$status* <$env.BUILD_URL|New Jenkins>."
-  slackSend channel: '#pandalytics-cr', color: color, message: message
+  slackSend channel: '#oreo-builds', color: color, message: message
 }
 
 pipeline {
