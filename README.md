@@ -134,8 +134,10 @@ Its output takes the form:
 
 Process:
 1. Write some code
-2. Write tests
-3. Open a pull request
+1. Write tests
+1. Run `make installLocal` to test changes
+1. Run `bin/canvasDataCli ....` to test your changes locally 
+1. Open a pull request
 
 ### Running tests
 
