@@ -5,8 +5,6 @@ var FileDownloader = require('./FileDownloader')
 var async = require('async')
 var mkdirp = require('mkdirp')
 var glob = require('glob')
-const DEFAULT_LIMIT = 50
-const CONCURRENCY_LIMIT = 5
 class Sync {
   constructor(opts, config, logger) {
     this.opts = opts
@@ -14,13 +12,14 @@ class Sync {
     this.api = new Api(config)
     this.fileDownloader = new FileDownloader(logger)
     this.saveLocation = path.resolve(process.cwd(), config.saveLocation)
+    this.maxConnections = config.maxConnections || 200
   }
   run(cb) {
     this.getSync((err, toSync) => {
       if (err) return cb(err)
       this.downloadSchema(toSync.schemaVersion, (err) => {
         if (err) return cb(err)
-        async.mapLimit(toSync.files, CONCURRENCY_LIMIT, this.processFile.bind(this), (err, results) => {
+        async.mapLimit(toSync.files, this.maxConnections, this.processFile.bind(this), (err, results) => {
           if (err) return cb(err)
 
           var splitResults = this.splitResults(results)
