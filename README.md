@@ -76,7 +76,7 @@ On subsequent executions, this will redownload all the data for that table, igno
 This command will unpack the gzipped files, concat any partitioned files, and add a header to the output file
 
 ```Shell
-canvasDataCli unpack -c path/to/config.js -f user_dim,account_dim
+canvasDataCli unpack -c path/to/config.js -f user_dim account_dim
 ```
 
 This command will unpack the user_dim and account_dim tables to a directory. Currently, you explictly have to give the files you want to unpack
