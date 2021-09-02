@@ -26,7 +26,7 @@ class HistoricalRequests {
       const files = response.files
         .filter((file) => file.table == 'requests')
         .filter((file) => !file.partial);
-      const results = lodash.merge({}, ...files
+      const results = lodash.mergeWith({}, ...files
         .map((file) => {
           return {
             [this.getRangeForFile(file.url)]: [file]

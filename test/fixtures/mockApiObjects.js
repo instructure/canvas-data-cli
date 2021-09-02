@@ -29,8 +29,8 @@ var mockApiObjects = module.exports = {
       updatedAt: "2015-10-24T00:00:00.000Z",
       createdAt: "2015-10-24T00:00:00.000Z",
       schemaVersion: "1.0.1",
-      artifactsByTable: _.indexBy(artifacts, 'tableName')
-    })
+      artifactsByTable: _.keyBy(artifacts, 'tableName')
+    });
 
   },
   buildDumpArtifact(opts) {
