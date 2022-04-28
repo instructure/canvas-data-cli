@@ -35,7 +35,7 @@
   },
   "homepage": "https://github.com/instructure/canvas-data-cli#readme",
   "dependencies": {
-    "async": "^1.5.0",
+    "async": "^2.6.4",
     "glob": "^7.0.3",
     "end-of-stream": "1.4.1",
     "lodash": "^3.10.1",
