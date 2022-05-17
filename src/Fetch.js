@@ -11,9 +11,9 @@ class Fetch {
     this.logger = logger
     this.api = new Api(config)
     this.table = opts.table
-    this.concurrencyLimit = opts.limit || 9999999
     this.saveLocation = path.resolve(process.cwd(), config.saveLocation)
     this.fileDownloader = new FileDownloader(logger)
+    this.maxConnections = config.maxConnections || 200
   }
   getNewest(files) {
     let toDownload = []
@@ -49,8 +49,8 @@ class Fetch {
 
         let toDownload = this.getNewest(files)
         this.logger.info(`Files (${toDownload.length})`, toDownload)
-
-        async.mapLimit(toDownload, this.concurrencyLimit, (file, innerCb) => {
+        
+        async.mapLimit(toDownload, this.maxConnections, (file, innerCb) => {
           this.fileDownloader.downloadToFile(
             file,
             {tableName: this.table, sequence: file.sequence},

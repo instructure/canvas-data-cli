@@ -59,12 +59,6 @@ var cli = yargs
       demand: true,
       type: 'string'
     })
-    .option('limit', {
-      alias: 'l',
-      describe: 'max concurrent downloads',
-      demand: false,
-      type: 'integer'
-    })
   })
   .command('grab', 'grab one specific dump', (yargs) => {
     yargs.options('config', {
