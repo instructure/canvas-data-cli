@@ -26,7 +26,7 @@ var apiAuth = {
   },
   buildHmacSig: function(secret, timestamp, reqOpts) {
     var message = apiAuth.buildMessage(secret, timestamp, reqOpts)
-    var hmac = crypto.createHmac(HMAC_ALG, new Buffer(secret))
+    var hmac = crypto.createHmac(HMAC_ALG, Buffer.from(secret))
     hmac.update(message)
     return hmac.digest('base64')
   },
