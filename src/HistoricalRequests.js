@@ -15,8 +15,10 @@ class HistoricalRequests {
   }
   getRangeForFile(url) {
     // The URL format is:
+    // https://<bucket>.s3.amazonaws.com/<account>/requests/<timerange>/0/part-<uuid>.???.txt.gz
+    // it used (not sure when the change was made) to have a format of:
     // https://<bucket>.s3.amazonaws.com/<timestamp>/requests_split_historical/<account>/requests/range/
-    return url.split('/')[7]
+    return url.split('/')[5]
   }
   run(cb) {
     this.api.getSync((err, response) => {
