@@ -21,7 +21,7 @@ describe('HistoricalRequests', () => {
         schemaVersion: 'test',
         files: [
           {
-            url: 'https://s3.amazonaws.com/timestamp/dw_split/account/requests/b%3D1/part-1',
+            url: 'https://s3.amazonaws.com/account/requests/b%3D1/0/part-1',
             filename: 'requests-1.gz',
             table: 'requests',
             partial: true
@@ -38,7 +38,7 @@ describe('HistoricalRequests', () => {
         schemaVersion: 'test',
         files: [
           {
-            url: 'https://s3.amazonaws.com/timestamp/dw_split/account/users/b%3D1/part-1',
+            url: 'https://s3.amazonaws.com/account/requests/b%3D1/0/part-1',
             filename: 'users-1.gz',
             table: 'users',
             partial: false
@@ -55,19 +55,19 @@ describe('HistoricalRequests', () => {
         schemaVersion: 'test',
         files: [
           {
-            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
+            url: 'https://s3.amazonaws.com/account/requests/range-1/0/part-1',
             filename: 'requests-1.gz',
             table: 'requests',
             partial: false
           },
           {
-            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
+            url: 'https://s3.amazonaws.com/account/requests/range-1/0/part-2',
             filename: 'requests-2.gz',
             table: 'requests',
             partial: false
           },
           {
-            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-2/0/part-1',
+            url: 'https://s3.amazonaws.com/account/requests/range-2/0/part-1',
             filename: 'requests-1.gz',
             table: 'requests',
             partial: false
@@ -77,13 +77,13 @@ describe('HistoricalRequests', () => {
       const expected = {
         'range-1': [
           {
-            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-1',
+            url: 'https://s3.amazonaws.com/account/requests/range-1/0/part-1',
             filename: 'requests-1.gz',
             table: 'requests',
             partial: false
           },
           {
-            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-1/0/part-2',
+            url: 'https://s3.amazonaws.com/account/requests/range-1/0/part-2',
             filename: 'requests-2.gz',
             table: 'requests',
             partial: false
@@ -91,7 +91,7 @@ describe('HistoricalRequests', () => {
         ],
         'range-2': [
           {
-            url: 'https://s3.amazonaws.com/timestamp/requests_split_historical/account/requests/range-2/0/part-1',
+            url: 'https://s3.amazonaws.com/account/requests/range-2/0/part-1',
             filename: 'requests-1.gz',
             table: 'requests',
             partial: false
